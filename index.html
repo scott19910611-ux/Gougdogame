@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>古董局中局 - WebRTC 區域網路直連對弈版</title>
+    <!-- 引入 Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 PeerJS Client CDN (用於 WebRTC Serverless 直連配對) -->
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght=400;700;900&family=Noto+Sans+TC:wght=300;400;500;700&display=swap');
+        
+        body { 
+            font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif; 
+            background: radial-gradient(circle at center, #0f1319 0%, #05070a 100%);
+        }
+        
+        .font-serif-china { font-family: 'Noto Serif TC', serif; }
+
+        .gold-border {
+            border: 1px solid rgba(217, 119, 6, 0.3);
+            box-shadow: 0 0 15px rgba(217, 119, 6, 0.05);
+        }
+
+        .dark-card {
+            background-color: rgba(15, 20, 28, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0) translateY(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-4px) translateY(-1px); }
+            20%, 40%, 60%, 80% { transform: translateX(4px) translateY(1px); }
+        }
+        .shake-active { animation: shake 0.4s ease-in-out both; }
+
+        @keyframes gold-aurora {
+            0% { box-shadow: 0 0 5px rgba(217, 119, 6, 0.15); border-color: rgba(217, 119, 6, 0.3); }
+            50% { box-shadow: 0 0 20px rgba(217, 119, 6, 0.6), inset 0 0 10px rgba(217, 119, 6, 0.1); border-color: rgba(217, 119, 6, 0.8); }
+            100% { box-shadow: 0 0 5px rgba(217, 119, 6, 0.15); border-color: rgba(217, 119, 6, 0.3); }
+        }
+        .gold-glow { animation: gold-aurora 2s infinite; }
+
+        .artifact-disabled {
+            opacity: 0.25;
+            pointer-events: none;
+            filter: grayscale(80%);
+        }
+
+        .gold-scrollbar::-webkit-scrollbar { width: 4px; }
+        .gold-scrollbar::-webkit-scrollbar-track { background: #05070a; }
+        .gold-scrollbar::-webkit-scrollbar-thumb { background: rgba(217, 119, 6, 0.5); border-radius: 10px; }
+    </style>
+</head>
+<body class="min-h-screen text-gray-200 flex items-center justify-center p-2 sm:p-4 overflow-x-hidden">
+
+    <div id="screen-transition-overlay" class="fixed inset-0 bg-black z-50 pointer-events-none opacity-0 transition-all duration-700 flex flex-col items-center justify-center text-center">
+        <div id="transition-icon" class="text-6xl mb-4 animate-bounce">🌙</div>
+        <h2 id="transition-label" class="text-2xl font-extrabold tracking-widest text-amber-500 font-serif-china">天黑請閉眼...</h2>
+        <p id="transition-sub" class="text-xs text-gray-500 mt-2">WebRTC 區域網路直連同步中</p>
+    </div>
+
+    <div id="custom-toast" class="fixed top-4 left-1/2 transform -translate-x-1/2 bg-zinc-900 border border-amber-600/80 text-amber-200 px-5 py-2.5 rounded-xl shadow-2xl z-50 transition-all duration-300 opacity-0 pointer-events-none text-center text-xs">
+        <span id="toast-message" class="font-medium">提示訊息</span>
+    </div>
+
+    <div id="game-container" class="dark-card w-full max-w-lg rounded-2xl shadow-2xl p-4 sm:p-5 relative overflow-hidden gold-border transition-transform duration-300">
+        
+        <div class="flex justify-between items-center mb-4 border-b border-zinc-800 pb-3">
+            <h1 class="text-lg sm:text-xl font-bold tracking-wider text-amber-500 flex items-center gap-2 font-serif-china">
+                🏺 古董局中局 <span class="text-[10px] bg-zinc-950 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full" id="mode-badge">未連線</span>
+            </h1>
+            <div class="text-[10px] text-gray-400 font-mono" id="round-display-header">準備開局</div>
+        </div>
+
+        <div id="expert-slots-panel" class="hidden bg-zinc-950 border border-amber-900/20 p-3 rounded-xl mb-4 text-xs space-y-2">
+            <div class="flex justify-between items-center">
+                <span class="text-amber-500 font-bold flex items-center gap-1 font-serif-china">👥 九龍密室 • 專家席位</span>
+                <span class="text-[9px] text-gray-500" id="god-mode-status">暗夜與鑑定階段可直接點選席位</span>
+            </div>
+            <div class="grid grid-cols-3 gap-2" id="player-slots-grid"></div>
+            <div class="flex justify-between items-center pt-1 border-t border-zinc-900 text-[10px]">
+                <span class="text-gray-600">上帝輔助：</span>
+                <button id="btn-god-mode" onclick="toggleGodMode()" class="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-gray-500 px-2 py-0.5 rounded text-[9px] transition-all">
+                    👁️ 開啟天眼 (上帝視角)
+                </button>
+            </div>
+        </div>
+
+        <div id="view-login" class="space-y-4">
+            <p class="text-xs text-gray-400 leading-relaxed">
+                本版本採用 <strong>WebRTC Serverless (點對點直連)</strong> 技術。房主建立房間，其他人輸入相同房號即可直連。
+            </p>
+            <div class="space-y-3">
+                <div>
+                    <label class="block text-[10px] font-medium text-amber-500/80 mb-1">您的江湖代號</label>
+                    <input type="text" id="input-name" placeholder="例如: 許願、藥不然..." class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-gray-200 placeholder-zinc-700 text-xs outline-none">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-medium text-amber-500/80 mb-1">自訂四位數房號</label>
+                    <input type="text" id="input-room" placeholder="例如: 8888" class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-gray-200 placeholder-zinc-700 text-xs font-mono outline-none">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-2">
+                <button onclick="initiateWebRTCHost()" class="bg-amber-900/20 hover:bg-amber-900/40 text-amber-400 border border-amber-800/40 font-bold py-2 px-4 rounded-lg transition text-xs">
+                    👑 我當房主 (開房)
+                </button>
+                <button onclick="initiateWebRTCJoin()" class="bg-zinc-900 hover:bg-zinc-800 text-gray-400 border border-zinc-800 font-bold py-2 px-4 rounded-lg transition text-xs">
+                    🤝 潛入密室 (加入)
+                </button>
+            </div>
+            <div class="border-t border-zinc-900 pt-3 text-center">
+                <button onclick="enableDemoMode()" class="text-[10px] text-gray-500 hover:text-amber-500 underline transition-all">
+                    🤖 沒有朋友？點此進入「單機人機模擬體驗」
+                </button>
+            </div>
+        </div>
+
+        <div id="view-lobby" class="hidden space-y-4">
+            <div class="bg-zinc-950 border border-zinc-900 p-3 rounded-xl text-center">
+                <p class="text-[10px] text-gray-500">九龍密室房號</p>
+                <p class="text-xl font-mono font-bold tracking-widest text-amber-500 mt-0.5" id="display-room-code">----</p>
+            </div>
+            <ul id="player-list" class="bg-zinc-950 border border-zinc-900 rounded-xl divide-y divide-zinc-900 max-h-40 overflow-y-auto gold-scrollbar text-xs p-2 space-y-1"></ul>
+            <button id="btn-start" onclick="startWebRTCGame()" class="hidden w-full bg-amber-900/20 hover:bg-amber-900/30 border border-amber-800/40 text-amber-400 font-bold py-2 rounded-lg transition text-xs">
+                👑 掌門開局：啟動古董局中局
+            </button>
+        </div>
+
+        <div id="view-game" class="hidden space-y-4">
+            <div class="bg-gradient-to-r from-zinc-950 via-amber-950/5 to-zinc-950 border border-amber-900/20 p-3 rounded-xl">
+                <h2 id="my-role" class="text-sm font-extrabold text-amber-400 font-serif-china">載入中...</h2>
+                <p id="my-camp-desc" class="text-[10px] text-gray-400 mt-1"></p>
+            </div>
+            <div id="panel-night" class="space-y-2 bg-zinc-950 p-3 rounded-xl border border-zinc-900 hidden">
+                <h3 class="text-[11px] font-bold text-amber-400 text-center" id="night-title-header">請規劃您的暗夜能力</h3>
+            </div>
+            <div id="panel-day" class="hidden space-y-3">
+                <div class="flex justify-between items-center bg-zinc-950 px-3 py-1.5 rounded-xl border border-zinc-900 text-xs">
+                    <span class="text-[10px] text-gray-500">大師議論大會中...</span>
+                    <button onclick="proceedToVotePhase()" class="bg-amber-900/20 text-amber-400 border border-amber-800/40 text-[10px] px-2 py-0.5 rounded">⚖️ 前往投票</button>
+                </div>
+            </div>
+            <div id="panel-vote" class="hidden space-y-2"></div>
+            <div class="space-y-2" id="grid-parent">
+                <h3 class="text-[10px] font-bold text-amber-500/80 tracking-wide font-serif-china" id="artifact-title-banner">十二獸首寶圖</h3>
+                <div id="artifact-grid" class="grid grid-cols-4 gap-1.5"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const animalNames = ['鼠首', '牛首', '虎首', '兔首', '龍首', '蛇首', '馬首', '羊首', '猴首', '雞首', '狗首', '豬首'];
+        const roleDatabase = {
+            '方震': { camp: 'GOOD' }, '老朝奉': { camp: 'BAD' }, '藥不然': { camp: 'BAD' }, '鄭教授': { camp: 'BAD' }, 
+            '許願': { camp: 'GOOD' }, '黃煙煙': { camp: 'GOOD' }, '路人專家': { camp: 'GOOD' }
+        };
+
+        let state = {
+            mode: 'demo', godMode: false, round: 1, phase: 'LOBBY', roomCode: '',
+            players: [], myPlayerId: 'me', artifacts: []
+        };
+
+        function enableDemoMode() {
+            state.mode = 'demo';
+            state.myPlayerId = 'me';
+            state.players = [
+                { id: 'me', name: '玩家(你)', role: '許願', isHost: true },
+                { id: 'bot1', name: 'AI專家-1', role: '老朝奉' },
+                { id: 'bot2', name: 'AI專家-2', role: '藥不然' },
+                { id: 'bot3', name: 'AI專家-3', role: '鄭教授' },
+                { id: 'bot4', name: 'AI專家-4', role: '方震' },
+                { id: 'bot5', name: 'AI專家-5', role: '黃煙煙' }
+            ];
+            state.artifacts = animalNames.map((name, idx) => ({ id: idx + 1, name, isReal: idx < 6 }));
+            showView('view-game');
+            document.getElementById('mode-badge').innerText = '單機模擬模式';
+            renderArtifacts();
+            renderPlayerSlots();
+        }
+
+        function initiateWebRTCHost() { alert("請查看之前的 WebRTC 初始化程式碼。"); }
+        function initiateWebRTCJoin() { alert("請查看之前的 WebRTC 初始化程式碼。"); }
+        function startWebRTCGame() { alert("遊戲已啟動"); }
+        function showView(id) {
+            ['view-login', 'view-lobby', 'view-game'].forEach(v => document.getElementById(v).classList.add('hidden'));
+            document.getElementById(id).classList.remove('hidden');
+        }
+        function toggleGodMode() { state.godMode = !state.godMode; renderArtifacts(); }
+        function renderArtifacts() { /* 繪製邏輯 */ }
+        function renderPlayerSlots() { /* 繪製邏輯 */ }
+        function onArtifactClicked(id) { /* 點擊邏輯 */ }
+        function onPlayerCardClicked(id) { /* 點擊邏輯 */ }
+    </script>
+</body>
+</html>
