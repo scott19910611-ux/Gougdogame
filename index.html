@@ -1341,7 +1341,7 @@
                 if (p.id === state.myPlayerId) return;
 				
 				// --- 新增：如果是真人玩家，直接跳過不生成對話 ---
-				if (!p.isBot) return;
+				//if (!p.isBot) return;
                 
                 // 被禁言的玩家直接不發言 (隱藏狀態，讓玩家自己推理誰沒說話)
                 if (p.isMuted && !state.godMode) return; 
