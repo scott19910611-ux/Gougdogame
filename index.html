@@ -6,10 +6,10 @@
     <title>古董局中局 - 區域網路直連與單機對弈版</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 PeerJS Client CDN (由於 Canvas 限制 WebSocket，此處僅保留供未來匯出使用) -->
+    <!-- 引入 PeerJS Client CDN (保留 WebRTC 擴充性) -->
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght=400;700;900&family=Noto+Sans+TC:wght=300;400;500;700&display=swap');
         
         body { 
             font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, sans-serif; 
@@ -77,11 +77,18 @@
         <!-- 單機模擬測試控制台 -->
         <div id="demo-controller" class="hidden bg-zinc-950 border border-amber-900/30 p-3 rounded-xl mb-4 text-xs space-y-3">
             <div class="flex justify-between items-center">
-                <span class="text-amber-500/90 font-bold flex items-center gap-1" id="demo-controller-title">🤖 單機對戰控制台</span>
+                <span class="text-amber-500/90 font-bold flex items-center gap-1">🤖 單機對戰 (其餘皆為電腦對手)</span>
                 <span class="bg-amber-950/80 px-2 py-0.5 rounded border border-amber-900/40 text-amber-400" id="demo-round-display">第 1 / 3 輪</span>
             </div>
             
-            <div class="flex justify-between items-center pt-2 border-t border-zinc-800/60" id="god-mode-container">
+            <div class="bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-800">
+                <p class="text-[10px] text-gray-500 font-semibold mb-2">👥 大師身份密錄 (天眼開啟時完全顯露)：</p>
+                <div class="grid grid-cols-3 gap-2 items-stretch" id="player-slots-grid">
+                    <!-- 動態注入 6 位大師狀態 -->
+                </div>
+            </div>
+            
+            <div class="flex justify-between items-center pt-2 border-t border-zinc-800/60">
                 <span class="text-gray-500 text-[10px]">上帝視角輔助：</span>
                 <button id="btn-god-mode" onclick="toggleGodMode()" class="bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-gray-400 hover:text-white px-3 py-1 rounded text-[10px] transition-all">
                     👁️ 開啟天眼 (顯示真實身份與真偽)
@@ -91,10 +98,10 @@
 
         <!-- 視圖 1: 登入 -->
         <div id="view-login" class="space-y-4">
-            <p class="text-xs text-gray-400 leading-relaxed text-amber-500/80">
-                【注意】由於 Canvas 環境安全限制，WebRTC 網路連線功能已暫停，請直接使用「單機人機模擬對戰」。
+            <p class="text-xs text-gray-400 leading-relaxed">
+                請選擇遊玩模式：您可進行區域網路 WebRTC 連線，或是直接進入單機人機對弈。
             </p>
-            <div class="space-y-3 opacity-50 pointer-events-none">
+            <div class="space-y-3">
                 <div>
                     <label class="block text-[10px] font-medium text-amber-500/80 mb-1">您的江湖代號</label>
                     <input type="text" id="input-name" placeholder="例如: 許願、藥不然..." class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-gray-200 placeholder-zinc-700 text-xs outline-none">
@@ -105,21 +112,21 @@
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-2 pt-2">
-                <button onclick="initiateWebRTCHost()" class="bg-zinc-900 hover:bg-zinc-800 text-gray-500 border border-zinc-800 font-bold py-2 px-4 rounded-lg transition text-xs opacity-50">
+                <button onclick="initiateWebRTCHost()" class="bg-zinc-900 hover:bg-zinc-800 text-gray-400 border border-zinc-800 font-bold py-2 px-4 rounded-lg transition text-xs">
                     👑 WebRTC 房主
                 </button>
-                <button onclick="initiateWebRTCJoin()" class="bg-zinc-900 hover:bg-zinc-800 text-gray-500 border border-zinc-800 font-bold py-2 px-4 rounded-lg transition text-xs opacity-50">
+                <button onclick="initiateWebRTCJoin()" class="bg-zinc-900 hover:bg-zinc-800 text-gray-400 border border-zinc-800 font-bold py-2 px-4 rounded-lg transition text-xs">
                     🤝 WebRTC 加入
                 </button>
             </div>
             <div class="border-t border-zinc-900 pt-3 text-center">
-                <button onclick="enableDemoMode()" class="w-full bg-amber-900/20 hover:bg-amber-900/40 text-amber-400 border border-amber-800/40 font-bold py-3 px-4 rounded-lg transition text-sm shadow-[0_0_15px_rgba(217,119,6,0.2)] animate-pulse">
+                <button onclick="enableDemoMode()" class="w-full bg-amber-900/20 hover:bg-amber-900/40 text-amber-400 border border-amber-800/40 font-bold py-3 px-4 rounded-lg transition text-sm">
                     🤖 直接進入「單機人機模擬對戰」
                 </button>
             </div>
         </div>
 
-        <!-- 視圖 2: 等候大廳 -->
+        <!-- 視圖 2: 等候大廳 (修復遺漏) -->
         <div id="view-lobby" class="hidden space-y-4">
             <div class="bg-zinc-950 border border-zinc-900 p-3 rounded-xl text-center">
                 <p class="text-[10px] text-gray-500">九龍密室房號 (WebRTC)</p>
@@ -180,7 +187,7 @@
                 </div>
             </div>
 
-            <!-- 暗夜遮蔽層 (AI行動中/非自己回合) -->
+            <!-- 暗夜遮蔽層 (AI行動中) -->
             <div id="night-blindfold-mask" class="bg-zinc-950 border border-zinc-900 p-4 rounded-xl text-center space-y-2 hidden">
                 <div class="text-2xl animate-pulse">💤</div>
                 <h3 class="text-xs font-bold text-amber-500/80">天黑請閉眼...</h3>
@@ -193,7 +200,7 @@
                     <span class="text-[10px] text-gray-500 flex items-center gap-1">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> 大師議論大會中...
                     </span>
-                    <button id="btn-proceed-vote" onclick="proceedToVotePhase()" class="bg-amber-900/20 hover:bg-amber-900/30 text-amber-400 border border-amber-800/40 text-[10px] px-2 py-0.5 rounded transition font-bold">
+                    <button onclick="proceedToVotePhase()" class="bg-amber-900/20 hover:bg-amber-900/30 text-amber-400 border border-amber-800/40 text-[10px] px-2 py-0.5 rounded transition font-bold">
                         ⚖️ 前往投票決議
                     </button>
                 </div>
@@ -245,15 +252,6 @@
                 </button>
             </div>
 
-            <!-- 專家人物展示區 (支援多人與單機，點擊互動) -->
-            <div class="space-y-2" id="players-parent">
-                <div class="flex justify-between items-center">
-                    <h3 class="text-[10px] font-bold text-amber-500/80 tracking-wide font-serif-china">👥 密室大師陣容</h3>
-                    <span class="text-[8px] text-purple-400/80 animate-pulse">夜間針對大師技能可點擊</span>
-                </div>
-                <div id="player-slots-grid" class="grid grid-cols-3 gap-1.5"></div>
-            </div>
-
             <!-- 獸首展示區 -->
             <div class="space-y-2" id="grid-parent">
                 <div class="flex justify-between items-center">
@@ -285,31 +283,11 @@
                 </div>
             </div>
 
-            <!-- 終局大結算 (加入總結報表) -->
+            <!-- 終局大結算 -->
             <div id="panel-end" class="hidden bg-zinc-950 p-4 rounded-xl border border-amber-800/20 space-y-3 text-center">
                 <div class="inline-block text-3xl">🏁</div>
                 <h2 id="end-winner-title" class="text-base font-extrabold text-amber-500 font-serif-china">老朝奉陣營 隻手遮天！</h2>
                 <p id="end-score-desc" class="text-[10px] text-gray-400 leading-relaxed"></p>
-                
-                <!-- 終局大結算新增表格區 -->
-                <div class="border-t border-zinc-900 pt-3 mt-3 text-left">
-                    <h4 class="text-[10px] font-bold text-amber-500 mb-2 font-serif-china">📊 三輪投票總結報表</h4>
-                    <div class="bg-zinc-950 rounded-lg overflow-hidden border border-zinc-800">
-                        <table class="w-full text-left text-[9px] text-gray-300">
-                            <thead class="bg-zinc-900 text-amber-500/80">
-                                <tr>
-                                    <th class="p-1.5 font-medium">回合</th>
-                                    <th class="p-1.5 font-medium">真品得票 (得分)</th>
-                                    <th class="p-1.5 font-medium">贗品得票 (失分)</th>
-                                </tr>
-                            </thead>
-                            <tbody id="end-summary-table" class="divide-y divide-zinc-800">
-                                <!-- 動態插入表格內容 -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
                 <div class="border-t border-zinc-900 pt-3">
                     <h4 class="text-[10px] font-bold text-amber-500 mb-2 font-serif-china">十二獸首真偽大起底</h4>
                     <div id="end-artifacts-reveal" class="grid grid-cols-4 gap-1 text-[9px] text-left"></div>
@@ -318,7 +296,7 @@
                     <h4 class="text-[10px] font-bold text-amber-500 mb-2 font-serif-china">各大師真實底牌大起底</h4>
                     <ul id="end-players-reveal" class="text-[10px] text-gray-400 space-y-1 text-left divide-y divide-zinc-900/60"></ul>
                 </div>
-                <button onclick="resetToLobby()" class="w-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-gray-300 font-bold py-2 rounded-lg text-[10px] transition mt-2 shadow-lg">
+                <button onclick="resetToLobby()" class="w-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-gray-300 font-bold py-2 rounded-lg text-[10px] transition mt-2">
                     再開一局，重入江湖
                 </button>
             </div>
@@ -388,25 +366,11 @@
             players: [], myPlayerId: 'user_player', myRole: '', myTeammates: [], artifacts: [],
             actionLog: [], myVotesThisRound: {}, totalVotesRemaining: 6, roundLedger: [],
             selectedTargetId: null, currentSequenceIndex: 0, nightSequence: [], sequenceActions: {},
-            historicalClueLogs: [], historicalLedgers: [], votesReceived: []
+            historicalClueLogs: [], historicalLedgers: [] 
         };
 
-        let isMultiplayer = false;
-        let isHost = false;
-
         // ----------------------------------------------
-        // 🌐 WebRTC 連線防護 (修正 Canvas 安全限制)
-        // ----------------------------------------------
-        function initiateWebRTCHost() {
-            showToast("⚠️ Canvas 預覽環境安全性限制外部 WebSocket 連線，請直接點擊下方「單機人機模擬對戰」！");
-        }
-
-        function initiateWebRTCJoin() {
-            showToast("⚠️ Canvas 預覽環境安全性限制外部 WebSocket 連線，請直接點擊下方「單機人機模擬對戰」！");
-        }
-
-        // ----------------------------------------------
-        // 🤖 單機/主機共用核心邏輯
+        // 🤖 單機人機模擬核心邏輯
         // ----------------------------------------------
         function enableDemoMode() {
             state.mode = 'demo';
@@ -444,48 +408,42 @@
 
             showView('view-game');
             showToast(`單機模式開局！發配底牌：【${state.myRole}】`);
-            startNightRound();
+            startDemoNightRound();
         }
 
-        function startNightRound() {
+        function startDemoNightRound() {
             state.selectedTargetId = null;
             state.sequenceActions = {};
             state.nightSequence = [...state.players].sort(() => Math.random() - 0.5);
             state.currentSequenceIndex = 0;
-            if (isHost || state.mode === 'demo') {
-                runNightTurnLogic();
-            }
+            runDemoNightTurnLogic();
         }
 
-        function runNightTurnLogic() {
+        function runDemoNightTurnLogic() {
             if (state.currentSequenceIndex >= state.nightSequence.length) {
-                executeGrandNightSettlement();
+                executeDemoGrandNightSettlement();
                 return;
             }
 
             const activePlayer = state.nightSequence[state.currentSequenceIndex];
             
             if (activePlayer.isMuted) {
-                if (activePlayer.id === state.myPlayerId) {
-                    showToast('🔇 您本輪處於被禁言狀態，黑夜動作自動略過...');
-                }
-                
-                if (isHost || state.mode === 'demo') {
-                    state.sequenceActions[activePlayer.role] = null;
-                    state.currentSequenceIndex++;
-                    setTimeout(runNightTurnLogic, 500);
-                }
+                if (activePlayer.id === state.myPlayerId) showToast('🔇 您本輪處於被禁言狀態，黑夜動作自動略過...');
+                state.sequenceActions[activePlayer.role] = null;
+                state.currentSequenceIndex++;
+                setTimeout(runDemoNightTurnLogic, 500);
                 return;
             }
 
             initGameUI();
 
-            if (activePlayer.id === state.myPlayerId) {
+            if (activePlayer.id === 'user_player') {
                 setupPlayerNightAction();
-            } else if (activePlayer.isBot && (isHost || state.mode === 'demo')) {
+            } else {
+                // ⚡ AI 急速決策
                 planBotAction(activePlayer);
                 state.currentSequenceIndex++;
-                setTimeout(runNightTurnLogic, 1000); 
+                setTimeout(runDemoNightTurnLogic, 500); // 模擬 AI 思考時間
             }
         }
 
@@ -534,15 +492,13 @@
                 choice = { type: 'PLAYER', id: p.id, displayName: p.name };
             }
 
-            triggerShakeEffect();
-
-            // 單機推演
             state.sequenceActions[state.myRole] = choice;
             state.currentSequenceIndex++;
-            runNightTurnLogic();
+            triggerShakeEffect();
+            runDemoNightTurnLogic();
         }
 
-        function executeGrandNightSettlement() {
+        function executeDemoGrandNightSettlement() {
             state.actionLog = [];
             state.artifacts.forEach(a => { a.protected = false; a.altered = false; a.shielded = false; });
             state.players.forEach(p => p.isMuted = false);
@@ -567,12 +523,10 @@
                 } else if (role === '許願') {
                     const art = state.artifacts.find(a => a.id === choice.id);
                     let res = art.shielded ? "未知" : (art.altered ? (!art.isReal ? "真品" : "贗品") : (art.isReal ? "真品" : "贗品"));
-                    
                     if (state.myRole === '許願') state.actionLog.push(`🔮 【專屬天眼】您鑑定 [${art.name}] 結果為：${res}。`);
                 } else if (role === '黃煙煙') {
                     const target = state.players.find(p => p.id === choice.id);
                     const isBad = ['老朝奉', '藥不然', '鄭教授'].includes(target.role);
-                    
                     if (state.myRole === '黃煙煙') state.actionLog.push(`🔍 【專屬天眼】查驗大師 [${target.name}] 屬性為：${isBad ? '👹 邪派' : '🟢 好人'}。`);
                 }
             });
@@ -587,13 +541,11 @@
         }
 
         // ----------------------------------------------
-        // ⚖️ 投票決議
+        // ⚖️ 投票決議 (單機版)
         // ----------------------------------------------
         function proceedToVotePhase() {
             state.phase = 'VOTE';
             state.myVotesThisRound = {};
-            if (isHost) state.votesReceived = [];
-            
             initGameUI();
         }
 
@@ -621,11 +573,6 @@
             let spentThisRound = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
             if (spentThisRound > state.totalVotesRemaining) return showToast("超額投出！");
 
-            executeDemoVoteSettlement();
-        }
-
-        function executeDemoVoteSettlement() {
-            let spentThisRound = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
             state.totalVotesRemaining -= spentThisRound;
             state.roundLedger = [];
 
@@ -670,10 +617,10 @@
 
         function advanceToNextRound() {
             if (state.round < 3) {
-                triggerPhaseTransition(`第 ${state.round + 1} 輪暗夜`, "夜幕降臨", "正在清整展廳，開啟下一輪暗夜...", () => {
+                triggerPhaseTransition(`第 ${state.round} 輪結束`, "夜幕降臨", "正在清整展廳，開啟下一輪暗夜...", () => {
                     state.round++;
                     state.phase = 'NIGHT';
-                    startNightRound();
+                    startDemoNightRound();
                 });
             } else {
                 triggerPhaseTransition("🏁", "終局揭盅", "三輪大戰結束，清點真品得票...", () => {
@@ -776,15 +723,11 @@
                 if (isMeObj) cardStyle = 'bg-amber-950/20 text-amber-300 border-amber-600/50 shadow-inner';
                 if (state.phase === 'NIGHT' && state.selectedTargetId === p.id) cardStyle = 'bg-purple-950/30 text-purple-300 border-purple-500 gold-glow';
 
-                const ringStyle = isCurrentActing ? 'ring-2 ring-amber-500/50' : 'border border-zinc-800';
+                const ringStyle = isCurrentActing ? 'ring-2 ring-amber-500/50' : 'border';
                 
                 const isObscured = (p.isMuted || (me && me.isMuted)) && !isMeObj && !state.godMode;
                 const nameDisplay = isObscured ? "【已屏蔽的大師】" : p.name;
-                
-                let roleDisplay = '身分: 隱藏專家';
-                if (showIdentity) roleDisplay = `身分: ${p.role}`;
-                else if (isObscured) roleDisplay = '身分: ???';
-
+                const roleDisplay = showIdentity ? `身分: ${p.role}` : (isObscured ? '身分: ???' : '身分: 隱藏專家');
                 const blurClass = isObscured ? 'filter blur-[3.5px] select-none opacity-30' : '';
 
                 return `
@@ -825,7 +768,6 @@
             document.getElementById('panel-round-settlement').classList.add('hidden');
             document.getElementById('panel-end').classList.add('hidden');
             document.getElementById('grid-parent').classList.remove('hidden');
-            document.getElementById('players-parent').classList.remove('hidden');
 
             if (state.phase === 'NIGHT') {
                 document.getElementById('step-night').className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
@@ -850,13 +792,11 @@
                 document.getElementById('step-vote').className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
                 document.getElementById('panel-round-settlement').classList.remove('hidden');
                 document.getElementById('grid-parent').classList.add('hidden');
-                document.getElementById('players-parent').classList.add('hidden');
                 renderRoundSettlementScreen();
             } else if (state.phase === 'END') {
                 document.getElementById('step-end').className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
                 document.getElementById('panel-end').classList.remove('hidden');
-                document.getElementById('grid-parent').classList.add('hidden'); 
-                document.getElementById('players-parent').classList.add('hidden'); 
+                document.getElementById('grid-parent').classList.add('hidden');
                 renderEndGameScreen();
             }
 
@@ -868,10 +808,7 @@
         function renderRoundSettlementScreen() {
             document.getElementById('settlement-round-title').innerText = `第 ${state.round} 輪 鑑定公投大起底`;
             document.getElementById('settlement-remaining-votes').innerText = state.totalVotesRemaining;
-            
-            const btnNext = document.getElementById('btn-next-round');
-            btnNext.innerText = state.round < 3 ? `進入第 ${state.round + 1} 輪暗夜 (餘 ${state.totalVotesRemaining} 票)` : `進行最終結局大揭盅`;
-            btnNext.classList.remove('pointer-events-none', 'opacity-50');
+            document.getElementById('btn-next-round').innerText = state.round < 3 ? `進入第 ${state.round + 1} 輪暗夜 (餘 ${state.totalVotesRemaining} 票)` : `進行最終結局大揭盅`;
 
             const ledgerContainer = document.getElementById('round-settlement-ledger');
             if (state.roundLedger.length === 0) {
@@ -900,30 +837,6 @@
                 `尋回真跡！好人大師們合計投給真品：${correctVotes} 票 (達標過半 18 票以上)！` :
                 `護寶失敗！好人大師們合計僅投給真品：${correctVotes} 票 (未達 18 票)。贗品橫行！`;
 
-            const summaryHtml = state.historicalLedgers.map((hl) => {
-                let realVotes = 0;
-                let fakeVotes = 0;
-                hl.ledger.forEach(v => {
-                    if (v.artifactName !== "無 (棄票保留)") {
-                        const art = state.artifacts.find(a => a.name === v.artifactName);
-                        if (art) {
-                            if (art.isReal) realVotes += v.votesCast;
-                            else fakeVotes += v.votesCast;
-                        }
-                    }
-                });
-                return `
-                    <tr>
-                        <td class="p-1.5 text-center text-amber-500 font-bold border-r border-zinc-800">第 ${hl.round} 輪</td>
-                        <td class="p-1.5 text-emerald-400 font-bold border-r border-zinc-800">+ ${realVotes} 票</td>
-                        <td class="p-1.5 text-red-400 font-bold">- ${fakeVotes} 票</td>
-                    </tr>
-                `;
-            }).join('');
-            
-            const tableContainer = document.getElementById('end-summary-table');
-            if (tableContainer) tableContainer.innerHTML = summaryHtml;
-
             document.getElementById('end-artifacts-reveal').innerHTML = state.artifacts.map(a => `
                 <div class="bg-zinc-900/60 p-1.5 rounded border ${a.isReal ? 'border-emerald-900/30':'border-red-950/30'}">
                     <div class="font-bold text-gray-200 text-[10px]">${a.name}</div>
@@ -934,7 +847,7 @@
 
             document.getElementById('end-players-reveal').innerHTML = state.players.map(p => `
                 <li class="py-1 text-[10px] flex justify-between items-center text-zinc-400">
-                    <span>${p.name} ${p.id === state.myPlayerId ? '<span class="text-amber-500">(你)</span>':''}</span> 
+                    <span>${p.name} ${p.id === 'user_player' ? '<span class="text-amber-500">(你)</span>':''}</span> 
                     <strong class="text-amber-500">${p.role}</strong>
                 </li>
             `).join('');
@@ -947,7 +860,6 @@
             
             state.players.forEach(p => {
                 if (p.id === state.myPlayerId) return;
-                
                 let isObscured = (p.isMuted || me.isMuted) && !state.godMode;
                 let msg = isObscured ? "（已被封口屏蔽，底牌資訊此時缺失...）" : "諸位打眼是小，丟失國寶是大，投票切記謹慎！";
                 
@@ -1058,20 +970,13 @@
 
         function renderArchivesLogs() {
             const cluesContainer = document.getElementById('archive-clue-logs');
-            const me = state.players.find(p => p.id === state.myPlayerId);
-
             if (state.historicalClueLogs.length === 0) {
                 cluesContainer.innerHTML = `<li class="text-zinc-600 italic">• 尚無回合暗夜記錄</li>`;
             } else {
                 cluesContainer.innerHTML = state.historicalClueLogs.map(item => `
                     <li class="border-b border-zinc-900/40 pb-1 mb-1">
                         <span class="text-amber-500 font-bold">[第 ${item.round} 輪夜間異動]</span><br>
-                        ${item.logs.map(log => {
-                            if (log.includes('【專屬天眼】') && !log.includes(me.name) && state.myRole !== '許願' && state.myRole !== '黃煙煙') {
-                                return '';
-                            }
-                            return `<span class="text-gray-400 pl-1">${log}</span>`;
-                        }).filter(Boolean).join('<br>')}
+                        ${item.logs.map(log => `<span class="text-gray-400 pl-1">${log}</span>`).join('<br>')}
                     </li>
                 `).join('');
             }
@@ -1142,9 +1047,11 @@
             }, 1000);
         }
 
-        function resetToLobby() { 
-            window.location.reload(); 
-        }
+        function resetToLobby() { window.location.reload(); }
+
+        // WebRTC 的空函數佔位 (保留以後要加入的空間)
+        function initiateWebRTCHost() { showToast("WebRTC 聯網功能已保留，目前請使用單機模擬測試"); }
+        function initiateWebRTCJoin() { showToast("WebRTC 聯網功能已保留，目前請使用單機模擬測試"); }
     </script>
 </body>
 </html>
