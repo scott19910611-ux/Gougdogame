@@ -205,7 +205,7 @@
                     </button>
                 </div>
 
-                <div id="solo-chat-box" class="block bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-3 shadow-inner">
+                <div id="solo-chat-box" class="hidden bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-3 shadow-inner">
                     <h4 class="text-xs font-bold text-amber-500 border-b border-zinc-800 pb-2 flex justify-between items-center font-serif-china">
                         <span>💬 密室白日議論 (AI 電腦專家發言)</span>
                     </h4>
@@ -1168,12 +1168,11 @@
                 if (activePlayer) {
                     if (activePlayer.id === state.myPlayerId || state.godMode) {
                         document.getElementById('panel-night').classList.remove('hidden');
-            if (state.phase === 'DAY') {
-                document.getElementById('step-day').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60 shadow-inner';
-                document.getElementById('panel-day').classList.remove('hidden');
-                document.getElementById('solo-chat-box').classList.remove('hidden');
-                generateAndShowBotChat();
-            }
+                        document.getElementById('night-title-header').innerText = `輪到 【${activePlayer.role}】 夜間規劃！`;
+                    } else {
+                        document.getElementById('night-blindfold-mask').classList.remove('hidden');
+                        document.getElementById('blindfold-desc').innerText = `當前輪到 【${activePlayer.name}】 行動暗算中...`;
+                    }
                 }
             } else if (state.phase === 'DAY') {
                 document.getElementById('step-day').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60 shadow-inner';
