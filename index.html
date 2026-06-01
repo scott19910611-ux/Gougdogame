@@ -572,7 +572,9 @@
                     initGameUI();
 					
 					if (state.phase === 'DAY') {
-						generateAndShowBotChat();
+						setTimeout(() => {
+							generateAndShowBotChat();
+						}, 100);
 					}
                 }
             } else if (data.type === 'TOAST') {
@@ -1181,6 +1183,7 @@
             } else if (state.phase === 'DAY') {
                 document.getElementById('step-day').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60 shadow-inner';
                 document.getElementById('panel-day').classList.remove('hidden');
+				document.getElementById('solo-chat-box').classList.remove('hidden');
             } else if (state.phase === 'VOTE') {
                 document.getElementById('step-vote').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60 shadow-inner';
                 document.getElementById('panel-vote').classList.remove('hidden');
