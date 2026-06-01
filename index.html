@@ -410,9 +410,6 @@
         // ----------------------------------------------
         function enableDemoMode() {
             state.mode = 'demo';
-            safeSetText('mode-badge', '單機模擬模式');
-            const demoController = document.getElementById('demo-controller');
-            if (demoController) demoController.classList.remove('hidden');
             document.getElementById('mode-badge').innerText = '單機模擬模式';
             document.getElementById('mode-badge').className = 'text-[10px] bg-amber-950/80 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full';
             document.getElementById('demo-controller').classList.remove('hidden');
@@ -446,12 +443,8 @@
             state.myTeammates = userCamp === 'BAD' ? state.players.filter(p => p.id !== 'user_player' && roleDatabase[p.role]?.camp === 'BAD').map(p => p.name) : [];
 
             showView('view-game');
-            showToast(`單機模式開局！`);
-            
-            // 加入延遲確保 UI 渲染完成
-            setTimeout(() => {
-                startNightRound();
-            }, 100);
+            showToast(`單機模式開局！發配底牌：【${state.myRole}】`);
+            startNightRound();
         }
 
         function startNightRound() {
@@ -808,75 +801,62 @@
                 `;
             }).join('');
         }
-        
-         function safeSetText(id, text) {
-            const el = document.getElementById(id);
-            if (el) el.innerText = text;
-        }
 
-        function safeSetClass(id, className) {
-            const el = document.getElementById(id);
-            if (el) el.className = className;
-        }
-
-        function safeSetVisible(id, isVisible) {
-            const el = document.getElementById(id);
-            if (el) {
-                if (isVisible) el.classList.remove('hidden');
-                else el.classList.add('hidden');
-            }
-        }
-        
         function initGameUI() {
-            if (!state.myRole) return;
+            if(!state.myRole) return;
             const roleInfo = roleDatabase[state.myRole] || roleDatabase['路人專家'];
-            
-            safeSetText('my-role', roleInfo.roleName);
-            safeSetText('my-camp-desc', `宗師特技：${roleInfo.skillDesc}`);
-            safeSetText('round-display-header', `第 ${state.round} / 3 輪對弈`);
+            document.getElementById('my-role').innerText = roleInfo.roleName;
+            document.getElementById('my-camp-desc').innerText = `宗師特技：${roleInfo.skillDesc}`;
+            document.getElementById('round-display-header').innerText = `第 ${state.round} / 3 輪對弈`;
 
             const badge = document.getElementById('role-badge');
-            if (badge) {
-                badge.innerText = roleInfo.camp === 'GOOD' ? '好人陣營' : '邪派陣營';
-                badge.className = roleInfo.camp === 'GOOD' ? 'bg-emerald-950/60 text-emerald-400 text-[9px] px-1.5 py-0.2 rounded font-bold' : 'bg-red-950/60 text-red-400 text-[9px] px-1.5 py-0.2 rounded font-bold';
-            }
+            badge.innerText = roleInfo.camp === 'GOOD' ? '好人陣營' : '邪派陣營';
+            badge.className = roleInfo.camp === 'GOOD' ? 'bg-emerald-950/60 text-emerald-400 text-[9px] px-1.5 py-0.2 rounded font-bold' : 'bg-red-950/60 text-red-400 text-[9px] px-1.5 py-0.2 rounded font-bold';
 
-            const teammatesBox = document.getElementById('teammates-box');
-            if (teammatesBox) {
-                teammatesBox.classList.toggle('hidden', state.myTeammates.length === 0);
-                safeSetText('my-teammates', state.myTeammates.join(', '));
-            }
+            document.getElementById('teammates-box').classList.toggle('hidden', state.myTeammates.length === 0);
+            document.getElementById('my-teammates').innerText = state.myTeammates.join(', ');
 
-            ['step-night', 'step-day', 'step-vote', 'step-end'].forEach(id => safeSetClass(id, 'py-1 rounded text-gray-600 text-[9px]'));
+            ['step-night', 'step-day', 'step-vote', 'step-end'].forEach(id => document.getElementById(id).className = 'py-1 rounded text-gray-600 text-[9px]');
 
-            // 隱藏所有面板
-            ['panel-night', 'night-blindfold-mask', 'panel-day', 'panel-vote', 'panel-round-settlement', 'panel-end'].forEach(id => safeSetVisible(id, false));
+            document.getElementById('panel-night').classList.add('hidden');
+            document.getElementById('night-blindfold-mask').classList.add('hidden');
+            document.getElementById('panel-day').classList.add('hidden');
+            document.getElementById('panel-vote').classList.add('hidden');
+            document.getElementById('panel-round-settlement').classList.add('hidden');
+            document.getElementById('panel-end').classList.add('hidden');
+            document.getElementById('grid-parent').classList.remove('hidden');
+            document.getElementById('players-parent').classList.remove('hidden');
 
             if (state.phase === 'NIGHT') {
-                safeSetClass('step-night', 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30');
+                document.getElementById('step-night').className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
                 const activePlayer = state.nightSequence[state.currentSequenceIndex];
                 if (activePlayer) {
                     if (activePlayer.id === state.myPlayerId || state.godMode) {
-                        safeSetVisible('panel-night', true);
-                        safeSetText('night-title-header', `輪到 【${activePlayer.role}】 夜間規劃！`);
+                        document.getElementById('panel-night').classList.remove('hidden');
+                        document.getElementById('night-title-header').innerText = `輪到 【${activePlayer.role}】 夜間規劃！`;
                     } else {
-                        safeSetVisible('night-blindfold-mask', true);
-                        safeSetText('blindfold-desc', `當前輪到 【${activePlayer.name}】 行動暗算中...`);
+                        document.getElementById('night-blindfold-mask').classList.remove('hidden');
+                        document.getElementById('blindfold-desc').innerText = `當前輪到 【${activePlayer.name}】 行動暗算中...`;
                     }
                 }
             } else if (state.phase === 'DAY') {
-                safeSetClass('step-day', 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30');
-                safeSetVisible('panel-day', true);
+                document.getElementById('step-day').className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
+                document.getElementById('panel-day').classList.remove('hidden');
             } else if (state.phase === 'VOTE') {
-                safeSetClass('step-vote', 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30');
-                safeSetVisible('panel-vote', true);
+                document.getElementById('step-vote').className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
+                document.getElementById('panel-vote').classList.remove('hidden');
+                document.getElementById('vote-count').innerText = `0 / ${state.totalVotesRemaining}`;
             } else if (state.phase === 'ROUND_SETTLEMENT') {
-                safeSetClass('step-vote', 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30');
-                safeSetVisible('panel-round-settlement', true);
+                document.getElementById('step-vote').className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
+                document.getElementById('panel-round-settlement').classList.remove('hidden');
+                document.getElementById('grid-parent').classList.add('hidden');
+                document.getElementById('players-parent').classList.add('hidden');
                 renderRoundSettlementScreen();
             } else if (state.phase === 'END') {
-                safeSetClass('step-end', 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30');
-                safeSetVisible('panel-end', true);
+                document.getElementById('step-end').className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
+                document.getElementById('panel-end').classList.remove('hidden');
+                document.getElementById('grid-parent').classList.add('hidden'); 
+                document.getElementById('players-parent').classList.add('hidden'); 
                 renderEndGameScreen();
             }
 
