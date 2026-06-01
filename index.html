@@ -6,7 +6,7 @@
     <title>古董局中局 - 區域網路直連與單機對弈版</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 PeerJS Client CDN -->
+    <!-- 引入 PeerJS Client CDN (由於 Canvas 限制 WebSocket，此處僅保留供未來匯出使用) -->
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
@@ -91,10 +91,10 @@
 
         <!-- 視圖 1: 登入 -->
         <div id="view-login" class="space-y-4">
-            <p class="text-xs text-gray-400 leading-relaxed">
-                請選擇遊玩模式：您可進行區域網路 WebRTC 連線，或是直接進入單機人機對弈。
+            <p class="text-xs text-gray-400 leading-relaxed text-amber-500/80">
+                【注意】由於 Canvas 環境安全限制，WebRTC 網路連線功能已暫停，請直接使用「單機人機模擬對戰」。
             </p>
-            <div class="space-y-3">
+            <div class="space-y-3 opacity-50 pointer-events-none">
                 <div>
                     <label class="block text-[10px] font-medium text-amber-500/80 mb-1">您的江湖代號</label>
                     <input type="text" id="input-name" placeholder="例如: 許願、藥不然..." class="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-4 py-2 text-gray-200 placeholder-zinc-700 text-xs outline-none">
@@ -105,15 +105,15 @@
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-2 pt-2">
-                <button onclick="initiateWebRTCHost()" class="bg-zinc-900 hover:bg-zinc-800 text-gray-400 border border-zinc-800 font-bold py-2 px-4 rounded-lg transition text-xs">
+                <button onclick="initiateWebRTCHost()" class="bg-zinc-900 hover:bg-zinc-800 text-gray-500 border border-zinc-800 font-bold py-2 px-4 rounded-lg transition text-xs opacity-50">
                     👑 WebRTC 房主
                 </button>
-                <button onclick="initiateWebRTCJoin()" class="bg-zinc-900 hover:bg-zinc-800 text-gray-400 border border-zinc-800 font-bold py-2 px-4 rounded-lg transition text-xs">
+                <button onclick="initiateWebRTCJoin()" class="bg-zinc-900 hover:bg-zinc-800 text-gray-500 border border-zinc-800 font-bold py-2 px-4 rounded-lg transition text-xs opacity-50">
                     🤝 WebRTC 加入
                 </button>
             </div>
             <div class="border-t border-zinc-900 pt-3 text-center">
-                <button onclick="enableDemoMode()" class="w-full bg-amber-900/20 hover:bg-amber-900/40 text-amber-400 border border-amber-800/40 font-bold py-3 px-4 rounded-lg transition text-sm">
+                <button onclick="enableDemoMode()" class="w-full bg-amber-900/20 hover:bg-amber-900/40 text-amber-400 border border-amber-800/40 font-bold py-3 px-4 rounded-lg transition text-sm shadow-[0_0_15px_rgba(217,119,6,0.2)] animate-pulse">
                     🤖 直接進入「單機人機模擬對戰」
                 </button>
             </div>
@@ -194,7 +194,7 @@
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> 大師議論大會中...
                     </span>
                     <button id="btn-proceed-vote" onclick="proceedToVotePhase()" class="bg-amber-900/20 hover:bg-amber-900/30 text-amber-400 border border-amber-800/40 text-[10px] px-2 py-0.5 rounded transition font-bold">
-                        ⚖️ 房主發起投票決議
+                        ⚖️ 前往投票決議
                     </button>
                 </div>
 
@@ -391,194 +391,18 @@
             historicalClueLogs: [], historicalLedgers: [], votesReceived: []
         };
 
-        // WebRTC 變數
-        let peer = null;
-        let connections = []; // 房主專用
-        let hostConn = null;  // 連線者專用
-        let isHost = false;
         let isMultiplayer = false;
-        const PEER_PREFIX = 'gudong-room-';
+        let isHost = false;
 
         // ----------------------------------------------
-        // 🌐 WebRTC 連線核心邏輯
+        // 🌐 WebRTC 連線防護 (修正 Canvas 安全限制)
         // ----------------------------------------------
         function initiateWebRTCHost() {
-            const userName = document.getElementById('input-name').value.trim() || '房主大師';
-            const roomCode = document.getElementById('input-room').value.trim();
-            if(!roomCode) return showToast('請輸入四位數房號！');
-
-            isMultiplayer = true;
-            isHost = true;
-            state.mode = 'webrtc';
-            state.myPlayerId = 'host_player';
-            state.players = [{ id: state.myPlayerId, name: userName, role: '', isBot: false, isMuted: false, totalVotesRemaining: 6, isHost: true }];
-            
-            peer = new Peer(PEER_PREFIX + roomCode);
-            
-            peer.on('open', (id) => {
-                showToast('信道建立成功！等待大師加入...');
-                document.getElementById('display-room-code').innerText = roomCode;
-                document.getElementById('webrtc-id-status').innerText = '房主信道已開啟';
-                document.getElementById('btn-start').classList.remove('hidden');
-                document.getElementById('wait-msg').classList.add('hidden');
-                document.getElementById('mode-badge').innerText = '房主';
-                document.getElementById('demo-controller').classList.remove('hidden');
-                document.getElementById('demo-controller-title').innerText = '👑 房主專用控制台';
-                document.getElementById('god-mode-container').classList.add('hidden'); // 多人不支援上帝視角防作弊
-                
-                updateLobbyUI();
-                showView('view-lobby');
-            });
-
-            peer.on('connection', (conn) => {
-                connections.push(conn);
-                conn.on('data', (data) => handleClientData(conn.peer, data));
-                conn.on('close', () => {
-                    connections = connections.filter(c => c.peer !== conn.peer);
-                    state.players = state.players.filter(p => p.id !== conn.peer);
-                    broadcastState();
-                    updateLobbyUI();
-                    showToast('有大師斷線離開了');
-                });
-            });
-
-            peer.on('error', (err) => { showToast('連線錯誤: ' + err.type); });
+            showToast("⚠️ Canvas 預覽環境安全性限制外部 WebSocket 連線，請直接點擊下方「單機人機模擬對戰」！");
         }
 
         function initiateWebRTCJoin() {
-            const userName = document.getElementById('input-name').value.trim() || '無名專家';
-            const roomCode = document.getElementById('input-room').value.trim();
-            if(!roomCode) return showToast('請輸入四位數房號！');
-
-            isMultiplayer = true;
-            isHost = false;
-            state.mode = 'webrtc';
-            
-            peer = new Peer();
-            peer.on('open', (id) => {
-                state.myPlayerId = id;
-                hostConn = peer.connect(PEER_PREFIX + roomCode);
-                
-                hostConn.on('open', () => {
-                    showToast('成功進入九龍密室！');
-                    document.getElementById('display-room-code').innerText = roomCode;
-                    document.getElementById('webrtc-id-status').innerText = '已連線至房主';
-                    document.getElementById('btn-start').classList.add('hidden');
-                    document.getElementById('wait-msg').classList.remove('hidden');
-                    document.getElementById('mode-badge').innerText = '連線大師';
-                    
-                    // 隱藏非房主按鈕
-                    document.getElementById('btn-proceed-vote').classList.add('hidden');
-                    const btnNext = document.getElementById('btn-next-round');
-                    btnNext.innerText = '等待房主開啟下一輪...';
-                    btnNext.classList.add('pointer-events-none', 'opacity-50');
-
-                    hostConn.send({ type: 'JOIN', name: userName, id: id });
-                    showView('view-lobby');
-                });
-                
-                hostConn.on('data', handleHostData);
-                hostConn.on('error', (err) => showToast('連線房主失敗！'));
-            });
-            peer.on('error', (err) => { showToast('連線錯誤: ' + err.type); });
-        }
-
-        function handleClientData(peerId, data) {
-            if (!isHost) return;
-            if (data.type === 'JOIN') {
-                if (state.phase !== 'LOBBY') return;
-                state.players.push({ id: peerId, name: data.name, role: '', isBot: false, isMuted: false, totalVotesRemaining: 6, isHost: false });
-                updateLobbyUI();
-                broadcastState();
-                showToast(`${data.name} 踏入密室`);
-            } else if (data.type === 'NIGHT_ACTION') {
-                state.sequenceActions[data.role] = data.choice;
-                state.currentSequenceIndex++;
-                runNightTurnLogic();
-            } else if (data.type === 'VOTE_ACTION') {
-                handleMultiplayerVote(peerId, data.votes);
-            }
-        }
-
-        function handleHostData(data) {
-            if (data.type === 'SYNC') {
-                const myId = state.myPlayerId;
-                const myVotes = state.myVotesThisRound;
-                
-                state = data.state;
-                state.myPlayerId = myId;
-                state.myVotesThisRound = myVotes; // 避免同步時洗掉正在點的票數
-                
-                const me = state.players.find(p => p.id === state.myPlayerId);
-                if (me) {
-                    state.myRole = me.role;
-                    state.totalVotesRemaining = me.totalVotesRemaining;
-                }
-                
-                const userCamp = roleDatabase[state.myRole]?.camp;
-                state.myTeammates = userCamp === 'BAD' ? state.players.filter(p => p.id !== state.myPlayerId && roleDatabase[p.role]?.camp === 'BAD').map(p => p.name) : [];
-                
-                if (state.phase === 'LOBBY') updateLobbyUI();
-                else initGameUI();
-            } else if (data.type === 'TOAST') {
-                showToast(data.msg);
-            } else if (data.type === 'TRANSITION') {
-                triggerPhaseTransition(data.icon, data.label, data.subtext);
-            } else if (data.type === 'SHAKE') {
-                triggerShakeEffect();
-            }
-        }
-
-        function broadcastState() {
-            if (!isHost) return;
-            connections.forEach(c => c.send({ type: 'SYNC', state: state }));
-        }
-
-        function broadcastTransition(icon, label, subtext) {
-            if (!isHost) return;
-            connections.forEach(c => c.send({ type: 'TRANSITION', icon, label, subtext }));
-        }
-
-        function updateLobbyUI() {
-            document.getElementById('player-count').innerText = state.players.length;
-            document.getElementById('player-list').innerHTML = state.players.map(p => 
-                `<li class="p-2 flex justify-between items-center text-gray-300">
-                    <span>${p.name}</span>
-                    <span class="text-[9px] ${p.isHost?'text-amber-500':'text-zinc-500'}">${p.isHost?'👑 房主':'已準備'}</span>
-                </li>`
-            ).join('');
-        }
-
-        function startWebRTCGame() {
-            if (!isHost) return;
-            if (state.players.length < 2) return showToast('至少需要 2 人才能開局！');
-            
-            // 人數不足 6 人以 AI 補齊
-            while (state.players.length < 6) {
-                const botId = `bot_${state.players.length}`;
-                state.players.push({ id: botId, name: `匿名專家 (AI ${state.players.length})`, role: '', isBot: true, isMuted: false, totalVotesRemaining: 6, isHost: false });
-            }
-
-            const rolesPool = ['許願', '老朝奉', '藥不然', '鄭教授', '方震', '黃煙煙'].sort(() => Math.random() - 0.5);
-            state.players.forEach((p, i) => { p.role = rolesPool[i]; });
-
-            let trueFalseArr = [true, true, true, true, true, true, false, false, false, false, false, false].sort(() => Math.random() - 0.5);
-            state.artifacts = animalNames.map((name, idx) => ({
-                id: idx + 1, name: name, isReal: trueFalseArr[idx], color: animalColors[name].code,
-                votes: 0, protected: false, altered: false, shielded: false
-            }));
-
-            state.phase = 'NIGHT';
-            state.round = 1;
-            state.historicalClueLogs = [];
-            state.historicalLedgers = [];
-            state.actionLog = ['🔮 局中局九龍密室大門已鎖定，各流派傳人就位。'];
-
-            broadcastTransition("🌙", "天黑請閉眼", "對局開始，大師暗算中...");
-            triggerPhaseTransition("🌙", "天黑請閉眼", "對局開始，大師暗算中...", () => {
-                showView('view-game');
-                startNightRound();
-            });
+            showToast("⚠️ Canvas 預覽環境安全性限制外部 WebSocket 連線，請直接點擊下方「單機人機模擬對戰」！");
         }
 
         // ----------------------------------------------
@@ -644,8 +468,6 @@
             if (activePlayer.isMuted) {
                 if (activePlayer.id === state.myPlayerId) {
                     showToast('🔇 您本輪處於被禁言狀態，黑夜動作自動略過...');
-                } else if (isHost && !activePlayer.isBot) {
-                    connections.forEach(c => { if(c.peer === activePlayer.id) c.send({type:'TOAST', msg:'🔇 您本輪處於被禁言狀態，黑夜動作自動略過...'}); });
                 }
                 
                 if (isHost || state.mode === 'demo') {
@@ -656,18 +478,15 @@
                 return;
             }
 
-            if (isHost) broadcastState();
             initGameUI();
 
             if (activePlayer.id === state.myPlayerId) {
                 setupPlayerNightAction();
             } else if (activePlayer.isBot && (isHost || state.mode === 'demo')) {
-                // 主機或單機負責處理 AI 動作
                 planBotAction(activePlayer);
                 state.currentSequenceIndex++;
                 setTimeout(runNightTurnLogic, 1000); 
             }
-            // 若為真實連線玩家的回合，主機只需等待不動作，Client端會透過 broadcastState 知道輪到自己並回傳動作
         }
 
         function planBotAction(botPlayer) {
@@ -717,18 +536,10 @@
 
             triggerShakeEffect();
 
-            if (isMultiplayer && !isHost) {
-                // 連線者傳送動作給房主
-                hostConn.send({ type: 'NIGHT_ACTION', role: state.myRole, choice: choice });
-                document.getElementById('panel-night').classList.add('hidden');
-                document.getElementById('night-blindfold-mask').classList.remove('hidden');
-                document.getElementById('blindfold-desc').innerText = "行動完畢，等待其他大師暗算中...";
-            } else {
-                // 單機或房主直接推演
-                state.sequenceActions[state.myRole] = choice;
-                state.currentSequenceIndex++;
-                runNightTurnLogic();
-            }
+            // 單機推演
+            state.sequenceActions[state.myRole] = choice;
+            state.currentSequenceIndex++;
+            runNightTurnLogic();
         }
 
         function executeGrandNightSettlement() {
@@ -758,34 +569,18 @@
                     let res = art.shielded ? "未知" : (art.altered ? (!art.isReal ? "真品" : "贗品") : (art.isReal ? "真品" : "贗品"));
                     
                     if (state.myRole === '許願') state.actionLog.push(`🔮 【專屬天眼】您鑑定 [${art.name}] 結果為：${res}。`);
-                    // WebRTC 下若是別人是許願，透過廣播將日誌給他看
-                    else if (isMultiplayer) {
-                        const targetPlayer = state.players.find(p => p.role === '許願');
-                        if(targetPlayer && !targetPlayer.isBot) {
-                            connections.forEach(c => { if(c.peer === targetPlayer.id) c.send({type:'TOAST', msg:`【專屬天眼】鑑定 ${art.name} 結果為：${res}`}); });
-                        }
-                    }
                 } else if (role === '黃煙煙') {
                     const target = state.players.find(p => p.id === choice.id);
                     const isBad = ['老朝奉', '藥不然', '鄭教授'].includes(target.role);
                     
                     if (state.myRole === '黃煙煙') state.actionLog.push(`🔍 【專屬天眼】查驗大師 [${target.name}] 屬性為：${isBad ? '👹 邪派' : '🟢 好人'}。`);
-                    else if (isMultiplayer) {
-                        const targetPlayer = state.players.find(p => p.role === '黃煙煙');
-                        if(targetPlayer && !targetPlayer.isBot) {
-                            connections.forEach(c => { if(c.peer === targetPlayer.id) c.send({type:'TOAST', msg:`【專屬天眼】${target.name} 屬性為：${isBad ? '👹 邪派' : '🟢 好人'}`}); });
-                        }
-                    }
                 }
             });
 
-            //過濾專屬日誌給非天眼玩家 (這裡將天眼日誌保留在 state 歷史中，供玩家自行查看符合自己身份的部分)
             state.historicalClueLogs.push({ round: state.round, logs: [...state.actionLog] });
 
-            if (isHost) broadcastTransition("☀️", "天亮開眼", "進入白日議論大會...");
             triggerPhaseTransition("☀️", "天亮開眼", "進入白日議論大會...", () => {
                 state.phase = 'DAY';
-                if(isHost) broadcastState();
                 initGameUI();
                 generateAndShowBotChat();
             });
@@ -795,12 +590,10 @@
         // ⚖️ 投票決議
         // ----------------------------------------------
         function proceedToVotePhase() {
-            if (isMultiplayer && !isHost) return; // 僅房主能發起
             state.phase = 'VOTE';
             state.myVotesThisRound = {};
             if (isHost) state.votesReceived = [];
             
-            if (isHost) broadcastState();
             initGameUI();
         }
 
@@ -828,82 +621,7 @@
             let spentThisRound = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
             if (spentThisRound > state.totalVotesRemaining) return showToast("超額投出！");
 
-            if (isMultiplayer && !isHost) {
-                // Client 送出選票
-                hostConn.send({ type: 'VOTE_ACTION', votes: state.myVotesThisRound });
-                document.getElementById('panel-vote').classList.add('hidden');
-                showToast("已送交，等待其他大師決議...");
-            } else {
-                if(isMultiplayer && isHost) {
-                    // Host 本人送出
-                    handleMultiplayerVote(state.myPlayerId, state.myVotesThisRound);
-                    document.getElementById('panel-vote').classList.add('hidden');
-                    showToast("已送交，等待其他大師決議...");
-                } else {
-                    // 單機模式
-                    executeDemoVoteSettlement();
-                }
-            }
-        }
-
-        function handleMultiplayerVote(playerId, votesMap) {
-            state.votesReceived.push({ id: playerId, votes: votesMap });
-            
-            // 找出多少真人玩家
-            const humanCount = state.players.filter(p => !p.isBot).length;
-            if (state.votesReceived.length >= humanCount) {
-                executeMultiplayerVoteSettlement();
-            }
-        }
-
-        function executeMultiplayerVoteSettlement() {
-            state.roundLedger = [];
-            
-            // 處理真人玩家票數
-            state.votesReceived.forEach(vr => {
-                const player = state.players.find(p => p.id === vr.id);
-                let spentThisRound = 0;
-                for (let artId in vr.votes) {
-                    const count = vr.votes[artId];
-                    if (count > 0) {
-                        spentThisRound += count;
-                        const art = state.artifacts.find(a => a.id == artId);
-                        art.votes += count;
-                        player.totalVotesRemaining -= count; // 扣除票數
-                        state.roundLedger.push({ playerName: player.name, artifactName: art.name, votesCast: count, isUser: vr.id === state.myPlayerId });
-                    }
-                }
-                if (spentThisRound === 0) {
-                    state.roundLedger.push({ playerName: player.name, artifactName: "無 (棄票保留)", votesCast: 0, isUser: vr.id === state.myPlayerId });
-                }
-            });
-
-            // 處理 AI 票數
-            state.players.forEach(p => {
-                if (!p.isBot) return;
-                let toCast = state.round === 3 ? p.totalVotesRemaining : Math.floor(Math.random() * (p.totalVotesRemaining + 1));
-                if (toCast > 3 && state.round !== 3) toCast = 2; 
-                p.totalVotesRemaining -= toCast;
-
-                if (toCast > 0) {
-                    const activeArts = getActiveArtifactsForCurrentRound();
-                    const targetArt = activeArts[Math.floor(Math.random() * activeArts.length)];
-                    targetArt.votes += toCast;
-                    state.roundLedger.push({ playerName: p.name, artifactName: targetArt.name, votesCast: toCast, isUser: false });
-                } else {
-                    state.roundLedger.push({ playerName: p.name, artifactName: "無 (棄票保留)", votesCast: 0, isUser: false });
-                }
-            });
-
-            state.historicalLedgers.push({ round: state.round, ledger: [...state.roundLedger] });
-
-            broadcastTransition("📊", "投票結果大起底", "正在核對所有人本輪投出的賬目...");
-            triggerPhaseTransition("📊", "投票結果大起底", "正在核對所有人本輪投出的賬目...", () => {
-                state.phase = 'ROUND_SETTLEMENT';
-                state.myVotesThisRound = {}; 
-                broadcastState();
-                initGameUI();
-            });
+            executeDemoVoteSettlement();
         }
 
         function executeDemoVoteSettlement() {
@@ -951,20 +669,15 @@
         }
 
         function advanceToNextRound() {
-            if (isMultiplayer && !isHost) return showToast('等待房主開啟下一輪...');
-
             if (state.round < 3) {
-                if(isHost) broadcastTransition(`第 ${state.round + 1} 輪暗夜`, "夜幕降臨", "正在清整展廳，開啟下一輪暗夜...");
                 triggerPhaseTransition(`第 ${state.round + 1} 輪暗夜`, "夜幕降臨", "正在清整展廳，開啟下一輪暗夜...", () => {
                     state.round++;
                     state.phase = 'NIGHT';
                     startNightRound();
                 });
             } else {
-                if(isHost) broadcastTransition("🏁", "終局揭盅", "三輪大戰結束，清點真品得票...");
                 triggerPhaseTransition("🏁", "終局揭盅", "三輪大戰結束，清點真品得票...", () => {
                     state.phase = 'END';
-                    if(isHost) broadcastState();
                     initGameUI();
                 });
             }
@@ -1071,8 +784,6 @@
                 let roleDisplay = '身分: 隱藏專家';
                 if (showIdentity) roleDisplay = `身分: ${p.role}`;
                 else if (isObscured) roleDisplay = '身分: ???';
-                
-                // 若為 WebRTC 連線房主，為方便主持可直接看到所有人狀態 (可選，此處仍走正規盲化邏輯)
 
                 const blurClass = isObscured ? 'filter blur-[3.5px] select-none opacity-30' : '';
 
@@ -1159,13 +870,8 @@
             document.getElementById('settlement-remaining-votes').innerText = state.totalVotesRemaining;
             
             const btnNext = document.getElementById('btn-next-round');
-            if (isMultiplayer && !isHost) {
-                btnNext.innerText = '等待房主開啟下一輪...';
-                btnNext.classList.add('pointer-events-none', 'opacity-50');
-            } else {
-                btnNext.innerText = state.round < 3 ? `進入第 ${state.round + 1} 輪暗夜 (餘 ${state.totalVotesRemaining} 票)` : `進行最終結局大揭盅`;
-                btnNext.classList.remove('pointer-events-none', 'opacity-50');
-            }
+            btnNext.innerText = state.round < 3 ? `進入第 ${state.round + 1} 輪暗夜 (餘 ${state.totalVotesRemaining} 票)` : `進行最終結局大揭盅`;
+            btnNext.classList.remove('pointer-events-none', 'opacity-50');
 
             const ledgerContainer = document.getElementById('round-settlement-ledger');
             if (state.roundLedger.length === 0) {
@@ -1242,9 +948,6 @@
             state.players.forEach(p => {
                 if (p.id === state.myPlayerId) return;
                 
-                // 真人玩家可以自行說話，不產生假對話 (實作上若是想加入打字也可，目前保留機器人喊話)
-                if(!p.isBot && isMultiplayer) return;
-
                 let isObscured = (p.isMuted || me.isMuted) && !state.godMode;
                 let msg = isObscured ? "（已被封口屏蔽，底牌資訊此時缺失...）" : "諸位打眼是小，丟失國寶是大，投票切記謹慎！";
                 
@@ -1364,7 +1067,6 @@
                     <li class="border-b border-zinc-900/40 pb-1 mb-1">
                         <span class="text-amber-500 font-bold">[第 ${item.round} 輪夜間異動]</span><br>
                         ${item.logs.map(log => {
-                            // 過濾屬於自己看得到的日誌 (主要是許願與黃煙煙的專屬天眼)
                             if (log.includes('【專屬天眼】') && !log.includes(me.name) && state.myRole !== '許願' && state.myRole !== '黃煙煙') {
                                 return '';
                             }
@@ -1441,7 +1143,6 @@
         }
 
         function resetToLobby() { 
-            if(peer) peer.destroy();
             window.location.reload(); 
         }
     </script>
