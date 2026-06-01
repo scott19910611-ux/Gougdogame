@@ -844,36 +844,25 @@
             initGameUI();
         }
 
-			window.changeVote = function(id, delta) {
-				if (state.phase !== 'VOTE') return;
-				
-				if (!state.myVotesThisRound) state.myVotesThisRound = {};
-				
-				// 獲取目前總投入票數
-				let currentVotesArr = Object.values(state.myVotesThisRound);
-				let spentThisRound = currentVotesArr.reduce((a, b) => a + b, 0);
-				let currentVotesForThisArt = state.myVotesThisRound[id] || 0;
+        window.changeVote = function(id, delta) {
+            if (state.phase !== 'VOTE') return;
+            let spentThisRound = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
+            let currentVotesForThisArt = state.myVotesThisRound[id] || 0;
 
-				if (delta > 0) {
-					// 強制檢查：如果增加後會超過剩餘票數，則拒絕動作
-					if (spentThisRound < state.totalVotesRemaining) {
-						state.myVotesThisRound[id] = currentVotesForThisArt + 1;
-					} else {
-						showToast(`您的餘額不足！ (僅剩 ${state.totalVotesRemaining - spentThisRound} 票)`);
-						return; // 終止函式，不執行渲染
-					}
-				} else if (delta < 0) {
-					if (currentVotesForThisArt > 0) {
-						state.myVotesThisRound[id] = currentVotesForThisArt - 1;
-					}
-				}
+            if (delta > 0) {
+                if (spentThisRound < state.totalVotesRemaining) {
+                    state.myVotesThisRound[id] = currentVotesForThisArt + 1;
+                } else {
+                    showToast(`剩餘總票數僅存 ${state.totalVotesRemaining} 票！`);
+                }
+            } else if (delta < 0) {
+                if (currentVotesForThisArt > 0) state.myVotesThisRound[id] = currentVotesForThisArt - 1;
+            }
 
-				// 更新顯示
-				let newSpent = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
-				document.getElementById('vote-count').innerText = `${newSpent} / ${state.totalVotesRemaining}`;
-				renderArtifacts();
-			}
-		}
+            let newSpent = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
+            document.getElementById('vote-count').innerText = `${newSpent} / ${state.totalVotesRemaining}`;
+            renderArtifacts();
+        }
 
         function submitVotes() {
             let spentThisRound = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
@@ -1339,9 +1328,6 @@
             // 2. 生成其他專家的對話 (AI 智慧發言)
             state.players.forEach(p => {
                 if (p.id === state.myPlayerId) return;
-				
-				// --- 新增：如果是真人玩家，直接跳過不生成對話 ---
-				//if (!p.isBot) return;
                 
                 // 被禁言的玩家直接不發言 (隱藏狀態，讓玩家自己推理誰沒說話)
                 if (p.isMuted && !state.godMode) return; 
