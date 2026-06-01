@@ -81,7 +81,7 @@
                 <span class="bg-amber-950 px-3 py-1 rounded-md border border-amber-900/60 text-amber-400 font-mono text-xs" id="demo-round-display">第 1 / 3 輪</span>
             </div>
             
-            <div class="flex justify-between items-center pt-3 border-t border-zinc-800">
+            <div class="flex justify-between items-center pt-3 border-t border-zinc-800" id="god-mode-container">
                 <span class="text-gray-400 text-xs font-medium">上帝視角輔助：</span>
                 <button id="btn-god-mode" onclick="toggleGodMode()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-gray-200 px-4 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md">
                     👁️ 開啟天眼 (顯示真實身份)
@@ -440,7 +440,7 @@
         }
 
         function setupPeerHost(peer, roomCode) {
-            document.getElementById('mode-badge').innerText = 'WebRTC 聯網房主';
+            document.getElementById('mode-badge').innerText = '房主';
             showView('view-lobby');
             document.getElementById('webrtc-id-status').innerText = `正在向 P2P 網關註冊【aq-room-${roomCode}】...`;
 
@@ -452,7 +452,11 @@
                 document.getElementById('wait-msg').classList.add('hidden');
                 document.getElementById('demo-controller').classList.remove('hidden');
                 document.getElementById('demo-controller-title').innerText = '👑 房主控制台';
-                document.getElementById('god-mode-container').classList.add('hidden');
+                
+                // 確保房主不會出現天眼按鈕
+                const godModeContainer = document.getElementById('god-mode-container');
+                if(godModeContainer) godModeContainer.classList.add('hidden');
+                
                 updateLobbyUI();
             });
 
@@ -501,7 +505,7 @@
         }
 
         function setupPeerJoin(peer, roomCode, userName) {
-            document.getElementById('mode-badge').innerText = 'WebRTC 聯網專家';
+            document.getElementById('mode-badge').innerText = '訪客';
             showView('view-lobby');
             document.getElementById('webrtc-id-status').innerText = `正在連線至房主【aq-room-${roomCode}】...`;
 
@@ -657,9 +661,13 @@
         // ----------------------------------------------
         function enableDemoMode() {
             state.mode = 'demo';
-            document.getElementById('mode-badge').innerText = '單機模擬模式';
+            document.getElementById('mode-badge').innerText = '單機';
             document.getElementById('mode-badge').className = 'text-[10px] bg-amber-950/80 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full';
             document.getElementById('demo-controller').classList.remove('hidden');
+            
+            // 確保單機模式會顯示天眼按鈕
+            const godModeContainer = document.getElementById('god-mode-container');
+            if(godModeContainer) godModeContainer.classList.remove('hidden');
 
             const userName = document.getElementById('input-name').value.trim() || '許願傳人';
             const rolesPool = ['許願', '老朝奉', '藥不然', '鄭教授', '方震', '黃煙煙'].sort(() => Math.random() - 0.5);
