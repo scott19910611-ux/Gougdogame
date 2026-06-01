@@ -6,7 +6,7 @@
     <title>古董局中局 - 區域網路直連與單機對弈版</title>
     <!-- 引入 Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 PeerJS Client CDN -->
+    <!-- 引入 PeerJS Client CDN (保留 WebRTC 擴充性) -->
     <script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;700;900&family=Noto+Sans+TC:wght@300;400;500;700&display=swap');
@@ -77,15 +77,8 @@
         <!-- 單機模擬測試控制台 -->
         <div id="demo-controller" class="hidden bg-zinc-950 border border-amber-900/30 p-3 rounded-xl mb-4 text-xs space-y-3">
             <div class="flex justify-between items-center">
-                <span class="text-amber-500/90 font-bold flex items-center gap-1">🤖 單機對戰 (其餘皆為電腦對手)</span>
+                <span class="text-amber-500/90 font-bold flex items-center gap-1">🤖 單機對戰控制台</span>
                 <span class="bg-amber-950/80 px-2 py-0.5 rounded border border-amber-900/40 text-amber-400" id="demo-round-display">第 1 / 3 輪</span>
-            </div>
-            
-            <div class="bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-800">
-                <p class="text-[10px] text-gray-500 font-semibold mb-2">👥 大師身份密錄 (天眼開啟時完全顯露)：</p>
-                <div class="grid grid-cols-3 gap-2 items-stretch" id="player-slots-grid">
-                    <!-- 動態注入 6 位大師狀態 -->
-                </div>
             </div>
             
             <div class="flex justify-between items-center pt-2 border-t border-zinc-800/60">
@@ -187,7 +180,7 @@
                 </div>
             </div>
 
-            <!-- 暗夜遮蔽層 (AI/其他玩家行動中) -->
+            <!-- 暗夜遮蔽層 (AI行動中) -->
             <div id="night-blindfold-mask" class="bg-zinc-950 border border-zinc-900 p-4 rounded-xl text-center space-y-2 hidden">
                 <div class="text-2xl animate-pulse">💤</div>
                 <h3 class="text-xs font-bold text-amber-500/80">天黑請閉眼...</h3>
@@ -200,7 +193,7 @@
                     <span class="text-[10px] text-gray-500 flex items-center gap-1">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span> 大師議論大會中...
                     </span>
-                    <button id="btn-proceed-vote" onclick="proceedToVotePhase()" class="bg-amber-900/20 hover:bg-amber-900/30 text-amber-400 border border-amber-800/40 text-[10px] px-2 py-0.5 rounded transition font-bold">
+                    <button onclick="proceedToVotePhase()" class="bg-amber-900/20 hover:bg-amber-900/30 text-amber-400 border border-amber-800/40 text-[10px] px-2 py-0.5 rounded transition font-bold">
                         ⚖️ 前往投票決議
                     </button>
                 </div>
@@ -247,9 +240,18 @@
                 <div class="bg-zinc-900/20 border border-zinc-800 p-2 rounded-xl text-center text-[10px]">
                     <p class="text-zinc-500">您的剩餘總票數：<span class="text-amber-400 font-bold font-mono" id="settlement-remaining-votes">6</span> 票</p>
                 </div>
-                <button id="btn-next-round" onclick="advanceToNextRound()" class="hidden w-full bg-amber-900/20 hover:bg-amber-900/30 border border-amber-800/40 text-amber-400 font-bold py-2 rounded-xl text-xs transition text-center shadow-lg">
+                <button id="btn-next-round" onclick="advanceToNextRound()" class="w-full bg-amber-900/20 hover:bg-amber-900/30 border border-amber-800/40 text-amber-400 font-bold py-2 rounded-xl text-xs transition text-center shadow-lg">
                     下一個回合
                 </button>
+            </div>
+
+            <!-- 專家人物展示區 (支援多人與單機，點擊互動) -->
+            <div class="space-y-2" id="players-parent">
+                <div class="flex justify-between items-center">
+                    <h3 class="text-[10px] font-bold text-amber-500/80 tracking-wide font-serif-china">👥 密室大師陣容</h3>
+                    <span class="text-[8px] text-purple-400/80 animate-pulse">夜間針對大師技能可點擊</span>
+                </div>
+                <div id="player-slots-grid" class="grid grid-cols-3 gap-1.5"></div>
             </div>
 
             <!-- 獸首展示區 -->
@@ -283,11 +285,31 @@
                 </div>
             </div>
 
-            <!-- 終局大結算 -->
+            <!-- 終局大結算 (加入總結報表) -->
             <div id="panel-end" class="hidden bg-zinc-950 p-4 rounded-xl border border-amber-800/20 space-y-3 text-center">
                 <div class="inline-block text-3xl">🏁</div>
                 <h2 id="end-winner-title" class="text-base font-extrabold text-amber-500 font-serif-china">老朝奉陣營 隻手遮天！</h2>
                 <p id="end-score-desc" class="text-[10px] text-gray-400 leading-relaxed"></p>
+                
+                <!-- 終局大結算新增表格區 -->
+                <div class="border-t border-zinc-900 pt-3 mt-3 text-left">
+                    <h4 class="text-[10px] font-bold text-amber-500 mb-2 font-serif-china">📊 三輪投票總結報表</h4>
+                    <div class="bg-zinc-950 rounded-lg overflow-hidden border border-zinc-800">
+                        <table class="w-full text-left text-[9px] text-gray-300">
+                            <thead class="bg-zinc-900 text-amber-500/80">
+                                <tr>
+                                    <th class="p-1.5 font-medium">回合</th>
+                                    <th class="p-1.5 font-medium">真品得票 (得分)</th>
+                                    <th class="p-1.5 font-medium">贗品得票 (失分)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="end-summary-table" class="divide-y divide-zinc-800">
+                                <!-- 動態插入表格內容 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="border-t border-zinc-900 pt-3">
                     <h4 class="text-[10px] font-bold text-amber-500 mb-2 font-serif-china">十二獸首真偽大起底</h4>
                     <div id="end-artifacts-reveal" class="grid grid-cols-4 gap-1 text-[9px] text-left"></div>
@@ -296,7 +318,7 @@
                     <h4 class="text-[10px] font-bold text-amber-500 mb-2 font-serif-china">各大師真實底牌大起底</h4>
                     <ul id="end-players-reveal" class="text-[10px] text-gray-400 space-y-1 text-left divide-y divide-zinc-900/60"></ul>
                 </div>
-                <button onclick="resetToLobby()" class="w-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-gray-300 font-bold py-2 rounded-lg text-[10px] transition mt-2">
+                <button onclick="resetToLobby()" class="w-full bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-gray-300 font-bold py-2 rounded-lg text-[10px] transition mt-2 shadow-lg">
                     再開一局，重入江湖
                 </button>
             </div>
@@ -369,422 +391,16 @@
             historicalClueLogs: [], historicalLedgers: [] 
         };
 
-        // WebRTC 變數 (Host & Client)
-        let myPeer = null;
-        let connections = {}; // 房主專用
-        let hostConn = null;  // 加入者專用
-
-        // DOM 安全操作 Helper 函數 (防錯機制)
-        const setTxt = (id, txt) => { const el = document.getElementById(id); if(el) el.innerText = txt; };
-        const setHtml = (id, html) => { const el = document.getElementById(id); if(el) el.innerHTML = html; };
-        const setVis = (id, visible) => { const el = document.getElementById(id); if(el) { visible ? el.classList.remove('hidden') : el.classList.add('hidden'); } };
-
-        // ----------------------------------------------
-        // 🌐 WebRTC 連線系統
-        // ----------------------------------------------
-        function initiateWebRTCHost() {
-            const name = document.getElementById('input-name').value.trim() || '江湖掌門';
-            const room = document.getElementById('input-room').value.trim() || '8888';
-            if (room.length !== 4) return showToast("⚠️ 請輸入四位數純數字房號！");
-
-            state.mode = 'multiplayer';
-            state.roomCode = room;
-            setTxt('mode-badge', 'WebRTC 聯網房主');
-            const badge = document.getElementById('mode-badge');
-            if(badge) badge.className = 'text-[10px] bg-amber-950 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full';
-
-            showView('view-lobby');
-            setTxt('webrtc-id-status', `正在向 P2P 網關註冊【aq-room-${room}】...`);
-
-            try {
-                myPeer = new Peer(`antique-room-${room}`);
-
-                myPeer.on('open', (id) => {
-                    setTxt('webrtc-id-status', `● 區網 P2P 隧道建立成功！`);
-                    state.myPlayerId = id;
-                    state.players = [{ id, name, isHost: true, role: '', isMuted: false, totalVotesRemaining: 6, hasVotedThisRound: false }];
-                    
-                    setVis('btn-start', true);
-                    setVis('wait-msg', false);
-                    updateLobbyUI(room);
-                });
-
-                myPeer.on('connection', (conn) => {
-                    conn.on('open', () => { connections[conn.peer] = conn; });
-                    conn.on('data', (data) => { handleHostReceivedData(conn.peer, data); });
-                    conn.on('close', () => {
-                        delete connections[conn.peer];
-                        state.players = state.players.filter(p => p.id !== conn.peer);
-                        broadcastToAllClients({ type: 'ROOM_UPDATE', players: state.players });
-                        updateLobbyUI(room);
-                    });
-                });
-
-                myPeer.on('error', (err) => {
-                    if (err.type === 'unavailable-id') setTxt('webrtc-id-status', "⚠️ 註冊失敗：該房號已被佔用！");
-                    else setTxt('webrtc-id-status', `⚠️ 連線受阻：Canvas 環境限制了外部連線，請使用「單機模擬對戰」`);
-                    showToast("⚠️ 預覽環境不支援連線，請改用單機模式");
-                });
-            } catch (error) {
-                console.warn("PeerJS blocked by Canvas environment:", error);
-                setTxt('webrtc-id-status', `⚠️ Canvas 預覽環境不支援 WebSocket，請點選「單機模擬對戰」`);
-                showToast("⚠️ 預覽環境不支援連線，請改用單機模式");
-            }
-        }
-
-        function initiateWebRTCJoin() {
-            const name = document.getElementById('input-name').value.trim() || '江湖客';
-            const room = document.getElementById('input-room').value.trim() || '8888';
-            if (room.length !== 4) return showToast("⚠️ 請輸入四位數純數字房號！");
-
-            state.mode = 'multiplayer';
-            state.roomCode = room;
-            setTxt('mode-badge', 'WebRTC 聯網專家');
-            const badge = document.getElementById('mode-badge');
-            if(badge) badge.className = 'text-[10px] bg-zinc-950 text-gray-400 border border-zinc-800 px-2 py-0.5 rounded-full';
-
-            showView('view-lobby');
-            setTxt('webrtc-id-status', `正在連線至房主【aq-room-${room}】...`);
-
-            try {
-                myPeer = new Peer();
-
-                myPeer.on('open', (myId) => {
-                    state.myPlayerId = myId;
-                    hostConn = myPeer.connect(`antique-room-${room}`);
-
-                    hostConn.on('open', () => {
-                        setTxt('webrtc-id-status', `● 已成功連入九龍密室！`);
-                        hostConn.send({ type: 'JOIN', name });
-                        updateLobbyUI(room);
-                    });
-
-                    hostConn.on('data', (data) => { handleClientReceivedData(data); });
-
-                    hostConn.on('close', () => {
-                        showToast("❌ 與房主連線中斷，正在還原...");
-                        setTimeout(() => window.location.reload(), 2000);
-                    });
-                });
-
-                myPeer.on('error', (err) => { 
-                    setTxt('webrtc-id-status', `⚠️ 連線失敗：Canvas 限制連線，或請檢查房主是否開房！`);
-                    showToast("⚠️ 預覽環境不支援連線，請改用單機模式");
-                });
-            } catch (error) {
-                console.warn("PeerJS blocked by Canvas environment:", error);
-                setTxt('webrtc-id-status', `⚠️ Canvas 預覽環境不支援 WebSocket，請點選「單機模擬對戰」`);
-                showToast("⚠️ 預覽環境不支援連線，請改用單機模式");
-            }
-        }
-
-        function broadcastToAllClients(data) {
-            for (let peerId in connections) {
-                if (connections[peerId] && connections[peerId].open) connections[peerId].send(data);
-            }
-        }
-
-        function handleHostReceivedData(peerId, data) {
-            if (data.type === 'JOIN') {
-                if (state.players.length >= 6) {
-                    if(connections[peerId]) connections[peerId].send({ type: 'ERROR', msg: '九龍密室已滿！' });
-                    return;
-                }
-                state.players.push({ id: peerId, name: data.name, isHost: false, role: '', isMuted: false, totalVotesRemaining: 6, hasVotedThisRound: false });
-                broadcastToAllClients({ type: 'ROOM_UPDATE', players: state.players });
-                updateLobbyUI(state.roomCode);
-            }
-            else if (data.type === 'SUBMIT_NIGHT_ACTION') {
-                const activePlayer = state.nightSequence[state.currentSequenceIndex];
-                if (activePlayer && activePlayer.id === peerId) {
-                    state.sequenceActions[activePlayer.role] = data.action;
-                    state.currentSequenceIndex++;
-                    advanceHostNightTurn();
-                }
-            }
-            else if (data.type === 'SUBMIT_VOTE_ACTION') {
-                let p = state.players.find(x => x.id === peerId);
-                if (p) {
-                    p.totalVotesRemaining -= data.spent;
-                    p.hasVotedThisRound = true;
-                    for (let id in data.votes) {
-                        const count = data.votes[id];
-                        let art = state.artifacts.find(a => a.id == id);
-                        if (art && count > 0) {
-                            art.votes += count;
-                            state.roundLedger.push({ playerName: p.name, artifactName: art.name, votesCast: count, isUser: false });
-                        }
-                    }
-                    if (data.spent === 0) state.roundLedger.push({ playerName: p.name, artifactName: "無 (棄票保留)", votesCast: 0, isUser: false });
-                }
-                checkHostVotesCompletion();
-            }
-        }
-
-        function handleClientReceivedData(data) {
-            if (data.type === 'ROOM_UPDATE') {
-                state.players = data.players;
-                updateLobbyUI(state.roomCode);
-            }
-            else if (data.type === 'GAME_START') {
-                state.artifacts = data.artifacts;
-                state.players = data.players;
-                state.round = data.round;
-                state.nightSequence = data.nightSequence;
-                state.currentSequenceIndex = data.currentSequenceIndex;
-                state.sequenceActions = data.sequenceActions;
-                
-                const me = state.players.find(p => p.id === state.myPlayerId);
-                state.myRole = me.role;
-                state.phase = 'NIGHT';
-                state.myVotesThisRound = {};
-
-                const userCamp = roleDatabase[state.myRole]?.camp;
-                state.myTeammates = userCamp === 'BAD' ? state.players.filter(p => p.id !== state.myPlayerId && roleDatabase[p.role]?.camp === 'BAD').map(p => p.name) : [];
-
-                setVis('demo-controller', false);
-                showView('view-game');
-                initGameUI();
-            }
-            else if (data.type === 'SYNC_NIGHT_STEP') {
-                state.currentSequenceIndex = data.currentSequenceIndex;
-                state.players = data.players;
-                state.sequenceActions = data.sequenceActions;
-                initGameUI();
-            }
-            else if (data.type === 'NIGHT_SETTLED') {
-                state.artifacts = data.artifacts;
-                state.players = data.players;
-                state.actionLog = data.actionLog;
-                
-                // 處理私密天眼結果 (只有自己看得到)
-                if (state.myRole === '許願' && data.sequenceActions['許願']) {
-                    const choice = data.sequenceActions['許願'];
-                    const art = state.artifacts.find(a => a.id === choice.id);
-                    let res = art.shielded ? "未知" : (art.altered ? (!art.isReal ? "真品" : "贗品") : (art.isReal ? "真品" : "贗品"));
-                    state.actionLog.push(`🔮 【專屬天眼】您鑑定 [${art.name}] 結果為：${res}。`);
-                }
-                if (state.myRole === '黃煙煙' && data.sequenceActions['黃煙煙']) {
-                    const choice = data.sequenceActions['黃煙煙'];
-                    const target = state.players.find(p => p.id === choice.id);
-                    const isBad = ['老朝奉', '藥不然', '鄭教授'].includes(target.role);
-                    state.actionLog.push(`🔍 【專屬天眼】查驗大師 [${target.name}] 屬性為：${isBad ? '👹 邪派' : '🟢 好人'}。`);
-                }
-
-                state.historicalClueLogs.push({ round: state.round, logs: [...state.actionLog] });
-                triggerPhaseTransition("☀️", "天亮開眼", "進入白日議論大會...", () => {
-                    state.phase = 'DAY';
-                    initGameUI();
-                });
-            }
-            else if (data.type === 'VOTE_PHASE_START') {
-                state.phase = 'VOTE';
-                state.myVotesThisRound = {};
-                initGameUI();
-            }
-            else if (data.type === 'ROUND_SETTLED') {
-                state.artifacts = data.artifacts;
-                state.players = data.players;
-                state.roundLedger = data.roundLedger;
-                state.historicalLedgers.push({ round: state.round, ledger: [...data.roundLedger] });
-                triggerPhaseTransition("📊", "公投結果大起底", "正在清點全場大師選票流向...", () => {
-                    state.phase = 'ROUND_SETTLEMENT';
-                    initGameUI();
-                });
-            }
-            else if (data.type === 'GAME_ENDED') {
-                state.artifacts = data.artifacts;
-                state.players = data.players;
-                state.phase = 'END';
-                initGameUI();
-            }
-            else if (data.type === 'ERROR') {
-                showToast(`❌ 房主提示: ${data.msg}`);
-            }
-        }
-
-        // ----------------------------------------------
-        // 👑 WebRTC 房主控制邏輯
-        // ----------------------------------------------
-        function startWebRTCGame() {
-            let aiIndex = 1;
-            const rolesPool = ['許願', '老朝奉', '藥不然', '鄭教授', '方震', '黃煙煙'].sort(() => Math.random() - 0.5);
-
-            // 自動填補不足的真人為 AI 專家
-            while (state.players.length < 6) {
-                state.players.push({
-                    id: `bot_${aiIndex}`, name: `電腦專家 AI-${aiIndex}`, role: '',
-                    isBot: true, isMuted: false, totalVotesRemaining: 6, hasVotedThisRound: true
-                });
-                aiIndex++;
-            }
-
-            state.players.forEach((p, idx) => {
-                p.role = rolesPool[idx];
-                p.isMuted = false;
-                p.totalVotesRemaining = 6;
-                if(!p.isBot) p.hasVotedThisRound = false;
-            });
-
-            let trueFalseArr = [true, true, true, true, true, true, false, false, false, false, false, false].sort(() => Math.random() - 0.5);
-            state.artifacts = animalNames.map((name, idx) => ({
-                id: idx + 1, name, isReal: trueFalseArr[idx], color: animalColors[name].code,
-                votes: 0, protected: false, altered: false, shielded: false
-            }));
-
-            state.round = 1;
-            state.nightSequence = [...state.players].sort(() => Math.random() - 0.5);
-            state.currentSequenceIndex = 0;
-            state.sequenceActions = {};
-            state.historicalClueLogs = [];
-            state.historicalLedgers = [];
-
-            const me = state.players.find(p => p.id === state.myPlayerId);
-            state.myRole = me.role;
-            state.phase = 'NIGHT';
-            state.myVotesThisRound = {};
-
-            const userCamp = roleDatabase[state.myRole]?.camp;
-            state.myTeammates = userCamp === 'BAD' ? state.players.filter(p => p.id !== state.myPlayerId && roleDatabase[p.role]?.camp === 'BAD').map(p => p.name) : [];
-
-            setVis('demo-controller', false);
-
-            broadcastToAllClients({
-                type: 'GAME_START', artifacts: state.artifacts, players: state.players,
-                round: 1, nightSequence: state.nightSequence, currentSequenceIndex: 0, sequenceActions: {}
-            });
-
-            showView('view-game');
-            initGameUI();
-            advanceHostNightTurn();
-        }
-
-        function advanceHostNightTurn() {
-            if (state.currentSequenceIndex >= state.nightSequence.length) {
-                resolveHostNightSettlement();
-                return;
-            }
-
-            const activePlayer = state.nightSequence[state.currentSequenceIndex];
-
-            if (activePlayer.isMuted) {
-                state.sequenceActions[activePlayer.role] = null;
-                state.currentSequenceIndex++;
-                advanceHostNightTurn();
-                return;
-            }
-
-            if (activePlayer.isBot) {
-                planBotAction(activePlayer);
-                state.currentSequenceIndex++;
-                setTimeout(advanceHostNightTurn, 500);
-                return;
-            }
-
-            broadcastToAllClients({
-                type: 'SYNC_NIGHT_STEP',
-                currentSequenceIndex: state.currentSequenceIndex, players: state.players, sequenceActions: state.sequenceActions
-            });
-            initGameUI();
-        }
-
-        function resolveHostNightSettlement() {
-            state.actionLog = [];
-            state.artifacts.forEach(a => { a.protected = false; a.altered = false; a.shielded = false; });
-            state.players.forEach(p => p.isMuted = false);
-
-            const settlementOrder = ['方震', '老朝奉', '藥不然', '鄭教授', '許願', '黃煙煙'];
-            settlementOrder.forEach(role => {
-                const choice = state.sequenceActions[role];
-                if (!choice) return;
-
-                if (role === '方震') {
-                    state.artifacts.find(a => a.id === choice.id).protected = true;
-                    state.actionLog.push(`🛡️ 治安官方震看守了 [${choice.displayName}]。`);
-                } else if (role === '老朝奉') {
-                    state.artifacts.find(a => a.id === choice.id).shielded = true;
-                    state.actionLog.push(`🌫️ 老朝奉施展隻手遮天，迷霧籠罩了 [${choice.displayName}]！`);
-                } else if (role === '藥不然') {
-                    const art = state.artifacts.find(a => a.id === choice.id);
-                    if (!art.protected) { art.altered = true; state.actionLog.push(`⚡ 昨夜黑影掠過，展位 [${choice.displayName}] 疑遭調包。`); }
-                } else if (role === '鄭教授') {
-                    state.players.find(p => p.id === choice.id).isMuted = true;
-                    state.actionLog.push(`🔇 鄭教授封口，專家 [${choice.displayName}] 本輪視覺與底牌已被屏蔽。`);
-                }
-            });
-
-            // 房主專用的天眼計算 (不會發送給其他人)
-            let localActionLog = [...state.actionLog];
-            if (state.myRole === '許願' && state.sequenceActions['許願']) {
-                const art = state.artifacts.find(a => a.id === state.sequenceActions['許願'].id);
-                let res = art.shielded ? "未知" : (art.altered ? (!art.isReal ? "真品" : "贗品") : (art.isReal ? "真品" : "贗品"));
-                localActionLog.push(`🔮 【專屬天眼】您鑑定 [${art.name}] 結果為：${res}。`);
-            }
-            if (state.myRole === '黃煙煙' && state.sequenceActions['黃煙煙']) {
-                const target = state.players.find(p => p.id === state.sequenceActions['黃煙煙'].id);
-                const isBad = ['老朝奉', '藥不然', '鄭教授'].includes(target.role);
-                localActionLog.push(`🔍 【專屬天眼】查驗大師 [${target.name}] 屬性為：${isBad ? '👹 邪派' : '🟢 好人'}。`);
-            }
-
-            state.actionLog = localActionLog;
-            state.historicalClueLogs.push({ round: state.round, logs: [...state.actionLog] });
-
-            broadcastToAllClients({
-                type: 'NIGHT_SETTLED',
-                artifacts: state.artifacts, players: state.players,
-                actionLog: state.actionLog.filter(log => !log.includes('【專屬天眼】')), // 過濾掉敏感訊息
-                sequenceActions: state.sequenceActions // 讓客戶端自己算他們的結果
-            });
-
-            triggerPhaseTransition("☀️", "天亮開眼", "進入白日議論大會...", () => {
-                state.phase = 'DAY';
-                initGameUI();
-            });
-        }
-
-        function checkHostVotesCompletion() {
-            if (state.players.filter(p => !p.isBot).every(p => p.hasVotedThisRound)) {
-                // 處理 AI 自動扣選票
-                state.players.forEach(p => {
-                    if (!p.isBot) return;
-                    let toCast = state.round === 3 ? p.totalVotesRemaining : Math.floor(Math.random() * (p.totalVotesRemaining + 1));
-                    if (toCast > 3 && state.round !== 3) toCast = 2;
-                    p.totalVotesRemaining -= toCast;
-
-                    if (toCast > 0) {
-                        const activeArts = getActiveArtifactsForCurrentRound();
-                        const targetArt = activeArts[Math.floor(Math.random() * activeArts.length)];
-                        targetArt.votes += toCast;
-                        state.roundLedger.push({ playerName: p.name, artifactName: targetArt.name, votesCast: toCast, isUser: false });
-                    } else {
-                        state.roundLedger.push({ playerName: p.name, artifactName: "無 (棄票保留)", votesCast: 0, isUser: false });
-                    }
-                });
-
-                state.historicalLedgers.push({ round: state.round, ledger: [...state.roundLedger] });
-
-                broadcastToAllClients({ type: 'ROUND_SETTLED', artifacts: state.artifacts, players: state.players, roundLedger: state.roundLedger });
-
-                triggerPhaseTransition("📊", "投票結果大起底", "正在核對所有人本輪投出的賬目...", () => {
-                    state.phase = 'ROUND_SETTLEMENT';
-                    initGameUI();
-                });
-            }
-        }
-
-
         // ----------------------------------------------
         // 🤖 單機人機模擬核心邏輯
         // ----------------------------------------------
         function enableDemoMode() {
             state.mode = 'demo';
-            setTxt('mode-badge', '單機模擬模式');
-            const badge = document.getElementById('mode-badge');
-            if(badge) badge.className = 'text-[10px] bg-amber-950/80 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full';
-            setVis('demo-controller', true);
+            document.getElementById('mode-badge').innerText = '單機模擬模式';
+            document.getElementById('mode-badge').className = 'text-[10px] bg-amber-950/80 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full';
+            document.getElementById('demo-controller').classList.remove('hidden');
 
-            const inputEl = document.getElementById('input-name');
-            const userName = (inputEl && inputEl.value.trim()) || '許願傳人';
+            const userName = document.getElementById('input-name').value.trim() || '許願傳人';
             const rolesPool = ['許願', '老朝奉', '藥不然', '鄭教授', '方震', '黃煙煙'].sort(() => Math.random() - 0.5);
 
             state.players = rolesPool.map((role, i) => ({
@@ -843,12 +459,13 @@
 
             initGameUI();
 
-            if (activePlayer.id === state.myPlayerId) {
+            if (activePlayer.id === 'user_player') {
                 setupPlayerNightAction();
             } else {
+                // ⚡ AI 急速決策
                 planBotAction(activePlayer);
                 state.currentSequenceIndex++;
-                setTimeout(runDemoNightTurnLogic, 500);
+                setTimeout(runDemoNightTurnLogic, 500); // 模擬 AI 思考時間
             }
         }
 
@@ -871,14 +488,14 @@
 
         function setupPlayerNightAction() {
             const roleInfo = roleDatabase[state.myRole];
-            setTxt('skill-title', roleInfo.skillTitle || "宗師密技");
-            setTxt('skill-desc', roleInfo.skillDesc);
+            document.getElementById('skill-title').innerText = roleInfo.skillTitle || "宗師密技";
+            document.getElementById('skill-desc').innerText = roleInfo.skillDesc;
             
             if (roleInfo.targetType === 'NONE') {
-                setVis('night-resolution-box', true);
-                setTxt('night-planned-summary', `🔒 您的大師身分 (${state.myRole}) 無需暗夜操作。`);
+                document.getElementById('night-resolution-box').classList.remove('hidden');
+                document.getElementById('night-planned-summary').innerText = `🔒 您的大師身分 (${state.myRole}) 無需暗夜操作。`;
             } else {
-                setVis('night-resolution-box', false);
+                document.getElementById('night-resolution-box').classList.add('hidden');
                 state.selectedTargetId = null;
             }
             initGameUI();
@@ -897,23 +514,10 @@
                 choice = { type: 'PLAYER', id: p.id, displayName: p.name };
             }
 
-            if (state.mode === 'multiplayer') {
-                const me = state.players.find(p=>p.id === state.myPlayerId);
-                if (me.isHost) {
-                    handleHostReceivedData(state.myPlayerId, { type: 'SUBMIT_NIGHT_ACTION', action: choice });
-                } else {
-                    if (hostConn && hostConn.open) {
-                        hostConn.send({ type: 'SUBMIT_NIGHT_ACTION', action: choice });
-                    } else {
-                        showToast("連線已中斷");
-                    }
-                }
-            } else {
-                state.sequenceActions[state.myRole] = choice;
-                state.currentSequenceIndex++;
-                triggerShakeEffect();
-                runDemoNightTurnLogic();
-            }
+            state.sequenceActions[state.myRole] = choice;
+            state.currentSequenceIndex++;
+            triggerShakeEffect();
+            runDemoNightTurnLogic();
         }
 
         function executeDemoGrandNightSettlement() {
@@ -959,24 +563,12 @@
         }
 
         // ----------------------------------------------
-        // ⚖️ 投票決議
+        // ⚖️ 投票決議 (單機版)
         // ----------------------------------------------
         function proceedToVotePhase() {
-            if (state.mode === 'multiplayer') {
-                const me = state.players.find(p=>p.id===state.myPlayerId);
-                if(me.isHost) {
-                    broadcastToAllClients({ type: 'VOTE_PHASE_START' });
-                    state.phase = 'VOTE';
-                    state.myVotesThisRound = {};
-                    initGameUI();
-                } else {
-                    showToast("等待掌門人開放投票！");
-                }
-            } else {
-                state.phase = 'VOTE';
-                state.myVotesThisRound = {};
-                initGameUI();
-            }
+            state.phase = 'VOTE';
+            state.myVotesThisRound = {};
+            initGameUI();
         }
 
         window.changeVote = function(id, delta) {
@@ -995,7 +587,7 @@
             }
 
             let newSpent = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
-            setTxt('vote-count', `${newSpent} / ${state.totalVotesRemaining}`);
+            document.getElementById('vote-count').innerText = `${newSpent} / ${state.totalVotesRemaining}`;
             renderArtifacts();
         }
 
@@ -1003,101 +595,65 @@
             let spentThisRound = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
             if (spentThisRound > state.totalVotesRemaining) return showToast("超額投出！");
 
-            if (state.mode === 'multiplayer') {
-                const me = state.players.find(p=>p.id===state.myPlayerId);
-                setHtml('panel-vote', '<p class="text-center text-[10px] text-amber-500 py-3">選票已送出，等待其他大師決議...</p>');
-                if(me.isHost) {
-                    handleHostReceivedData(state.myPlayerId, { type: 'SUBMIT_VOTE_ACTION', votes: state.myVotesThisRound, spent: spentThisRound });
-                } else {
-                    if(hostConn && hostConn.open) {
-                        hostConn.send({ type: 'SUBMIT_VOTE_ACTION', votes: state.myVotesThisRound, spent: spentThisRound });
-                    }
+            state.totalVotesRemaining -= spentThisRound;
+            state.roundLedger = [];
+
+            // 寫入玩家票
+            for (let id in state.myVotesThisRound) {
+                const count = state.myVotesThisRound[id];
+                if (count > 0) {
+                    const art = state.artifacts.find(a => a.id == id);
+                    art.votes += count;
+                    state.roundLedger.push({ playerName: state.players.find(p=>p.id === 'user_player').name, artifactName: art.name, votesCast: count, isUser: true });
                 }
-                state.myVotesThisRound = {};
-            } else {
-                state.totalVotesRemaining -= spentThisRound;
-                state.roundLedger = [];
-
-                for (let id in state.myVotesThisRound) {
-                    const count = state.myVotesThisRound[id];
-                    if (count > 0) {
-                        const art = state.artifacts.find(a => a.id == id);
-                        art.votes += count;
-                        state.roundLedger.push({ playerName: state.players.find(p=>p.id === 'user_player').name, artifactName: art.name, votesCast: count, isUser: true });
-                    }
-                }
-                if (spentThisRound === 0) state.roundLedger.push({ playerName: state.players.find(p=>p.id === 'user_player').name, artifactName: "無 (棄票保留)", votesCast: 0, isUser: true });
-
-                state.players.forEach(p => {
-                    if (!p.isBot) return;
-                    let toCast = state.round === 3 ? p.totalVotesRemaining : Math.floor(Math.random() * (p.totalVotesRemaining + 1));
-                    if (toCast > 3 && state.round !== 3) toCast = 2;
-                    p.totalVotesRemaining -= toCast;
-
-                    if (toCast > 0) {
-                        const activeArts = getActiveArtifactsForCurrentRound();
-                        const targetArt = activeArts[Math.floor(Math.random() * activeArts.length)];
-                        targetArt.votes += toCast;
-                        state.roundLedger.push({ playerName: p.name, artifactName: targetArt.name, votesCast: toCast, isUser: false });
-                    } else {
-                        state.roundLedger.push({ playerName: p.name, artifactName: "無 (棄票保留)", votesCast: 0, isUser: false });
-                    }
-                });
-
-                state.historicalLedgers.push({ round: state.round, ledger: [...state.roundLedger] });
-                state.myVotesThisRound = {};
-
-                triggerPhaseTransition("📊", "投票結果大起底", "正在核對所有人本輪投出的賬目...", () => {
-                    state.phase = 'ROUND_SETTLEMENT';
-                    initGameUI();
-                });
             }
+            if (spentThisRound === 0) {
+                state.roundLedger.push({ playerName: state.players.find(p=>p.id === 'user_player').name, artifactName: "無 (棄票保留)", votesCast: 0, isUser: true });
+            }
+
+            // AI 自動扣減
+            state.players.forEach(p => {
+                if (!p.isBot) return;
+                let toCast = state.round === 3 ? p.totalVotesRemaining : Math.floor(Math.random() * (p.totalVotesRemaining + 1));
+                if (toCast > 3 && state.round !== 3) toCast = 2; // AI 不會太早梭哈
+                p.totalVotesRemaining -= toCast;
+
+                if (toCast > 0) {
+                    const activeArts = getActiveArtifactsForCurrentRound();
+                    const targetArt = activeArts[Math.floor(Math.random() * activeArts.length)];
+                    targetArt.votes += toCast;
+                    state.roundLedger.push({ playerName: p.name, artifactName: targetArt.name, votesCast: toCast, isUser: false });
+                } else {
+                    state.roundLedger.push({ playerName: p.name, artifactName: "無 (棄票保留)", votesCast: 0, isUser: false });
+                }
+            });
+
+            state.historicalLedgers.push({ round: state.round, ledger: [...state.roundLedger] });
+            state.myVotesThisRound = {};
+
+            triggerPhaseTransition("📊", "投票結果大起底", "正在核對所有人本輪投出的賬目...", () => {
+                state.phase = 'ROUND_SETTLEMENT';
+                initGameUI();
+            });
         }
 
         function advanceToNextRound() {
-            if (state.mode === 'multiplayer') {
-                const me = state.players.find(p=>p.id===state.myPlayerId);
-                if (!me.isHost) return showToast("等待掌門人推進回合！");
-                
-                if (state.round < 3) {
+            if (state.round < 3) {
+                triggerPhaseTransition(`第 ${state.round} 輪結束`, "夜幕降臨", "正在清整展廳，開啟下一輪暗夜...", () => {
                     state.round++;
                     state.phase = 'NIGHT';
-                    state.currentSequenceIndex = 0;
-                    state.sequenceActions = {};
-                    state.roundLedger = [];
-                    state.nightSequence = [...state.players].sort(() => Math.random() - 0.5);
-                    state.players.forEach(p => p.hasVotedThisRound = p.isBot); // bot 預設 true 以便自動處理
-
-                    broadcastToAllClients({
-                        type: 'GAME_START', artifacts: state.artifacts, players: state.players,
-                        round: state.round, nightSequence: state.nightSequence, currentSequenceIndex: 0, sequenceActions: {}
-                    });
-
-                    initGameUI();
-                    advanceHostNightTurn();
-                } else {
-                    broadcastToAllClients({ type: 'GAME_ENDED', artifacts: state.artifacts, players: state.players });
+                    startDemoNightRound();
+                });
+            } else {
+                triggerPhaseTransition("🏁", "終局揭盅", "三輪大戰結束，清點真品得票...", () => {
                     state.phase = 'END';
                     initGameUI();
-                }
-            } else {
-                if (state.round < 3) {
-                    triggerPhaseTransition(`第 ${state.round} 輪結束`, "夜幕降臨", "正在清整展廳，開啟下一輪暗夜...", () => {
-                        state.round++;
-                        state.phase = 'NIGHT';
-                        startDemoNightRound();
-                    });
-                } else {
-                    triggerPhaseTransition("🏁", "終局揭盅", "三輪大戰結束，清點真品得票...", () => {
-                        state.phase = 'END';
-                        initGameUI();
-                    });
-                }
+                });
             }
         }
 
         // ----------------------------------------------
-        // 🎨 UI 渲染與防錯安全機制
+        // 🎨 UI 渲染與互動核心
         // ----------------------------------------------
         function getActiveArtifactsForCurrentRound() {
             if (state.round === 1) return state.artifacts.slice(0, 4);
@@ -1169,7 +725,7 @@
             }).join('');
 
             if(activeArts.length > 0) {
-                setTxt('artifact-title-banner', `十二獸首寶圖 (解鎖 No.${activeArts[0].id} ~ No.${activeArts[activeArts.length-1].id})`);
+                document.getElementById('artifact-title-banner').innerText = `十二獸首寶圖 (解鎖 No.${activeArts[0].id} ~ No.${activeArts[activeArts.length-1].id})`;
             }
         }
 
@@ -1178,7 +734,7 @@
             if (!grid || state.players.length === 0) return;
             const me = state.players.find(p => p.id === state.myPlayerId);
 
-            setTxt('demo-round-display', `第 ${state.round} / 3 輪`);
+            document.getElementById('demo-round-display').innerText = `第 ${state.round} / 3 輪`;
 
             grid.innerHTML = state.players.map(p => {
                 const isMeObj = p.id === state.myPlayerId;
@@ -1189,7 +745,7 @@
                 if (isMeObj) cardStyle = 'bg-amber-950/20 text-amber-300 border-amber-600/50 shadow-inner';
                 if (state.phase === 'NIGHT' && state.selectedTargetId === p.id) cardStyle = 'bg-purple-950/30 text-purple-300 border-purple-500 gold-glow';
 
-                const ringStyle = isCurrentActing ? 'ring-2 ring-amber-500/50' : 'border';
+                const ringStyle = isCurrentActing ? 'ring-2 ring-amber-500/50' : 'border border-zinc-800';
                 
                 const isObscured = (p.isMuted || (me && me.isMuted)) && !isMeObj && !state.godMode;
                 const nameDisplay = isObscured ? "【已屏蔽的大師】" : p.name;
@@ -1214,101 +770,58 @@
         function initGameUI() {
             if(!state.myRole) return;
             const roleInfo = roleDatabase[state.myRole] || roleDatabase['路人專家'];
-            
-            // 安全操作 DOM，避免 null 導致卡死
-            setTxt('my-role', roleInfo.roleName);
-            setTxt('my-camp-desc', `宗師特技：${roleInfo.skillDesc}`);
-            setTxt('round-display-header', `第 ${state.round} / 3 輪對弈`);
+            document.getElementById('my-role').innerText = roleInfo.roleName;
+            document.getElementById('my-camp-desc').innerText = `宗師特技：${roleInfo.skillDesc}`;
+            document.getElementById('round-display-header').innerText = `第 ${state.round} / 3 輪對弈`;
 
             const badge = document.getElementById('role-badge');
-            if (badge) {
-                badge.innerText = roleInfo.camp === 'GOOD' ? '好人陣營' : '邪派陣營';
-                badge.className = roleInfo.camp === 'GOOD' ? 'bg-emerald-950/60 text-emerald-400 text-[9px] px-1.5 py-0.2 rounded font-bold' : 'bg-red-950/60 text-red-400 text-[9px] px-1.5 py-0.2 rounded font-bold';
-            }
+            badge.innerText = roleInfo.camp === 'GOOD' ? '好人陣營' : '邪派陣營';
+            badge.className = roleInfo.camp === 'GOOD' ? 'bg-emerald-950/60 text-emerald-400 text-[9px] px-1.5 py-0.2 rounded font-bold' : 'bg-red-950/60 text-red-400 text-[9px] px-1.5 py-0.2 rounded font-bold';
 
-            const tBox = document.getElementById('teammates-box');
-            if(tBox) {
-                if(state.myTeammates.length === 0) tBox.classList.add('hidden');
-                else tBox.classList.remove('hidden');
-            }
-            setTxt('my-teammates', state.myTeammates.join(', '));
+            document.getElementById('teammates-box').classList.toggle('hidden', state.myTeammates.length === 0);
+            document.getElementById('my-teammates').innerText = state.myTeammates.join(', ');
 
-            ['step-night', 'step-day', 'step-vote', 'step-end'].forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.className = 'py-1 rounded text-gray-600 text-[9px]';
-            });
+            ['step-night', 'step-day', 'step-vote', 'step-end'].forEach(id => document.getElementById(id).className = 'py-1 rounded text-gray-600 text-[9px]');
 
-            setVis('panel-night', false);
-            setVis('night-blindfold-mask', false);
-            setVis('panel-day', false);
-            setVis('panel-vote', false);
-            setVis('panel-round-settlement', false);
-            setVis('panel-end', false);
-            setVis('grid-parent', true);
-
-            const me = state.players.find(p=>p.id===state.myPlayerId);
+            document.getElementById('panel-night').classList.add('hidden');
+            document.getElementById('night-blindfold-mask').classList.add('hidden');
+            document.getElementById('panel-day').classList.add('hidden');
+            document.getElementById('panel-vote').classList.add('hidden');
+            document.getElementById('panel-round-settlement').classList.add('hidden');
+            document.getElementById('panel-end').classList.add('hidden');
+            document.getElementById('grid-parent').classList.remove('hidden');
+            document.getElementById('players-parent').classList.remove('hidden'); // 確保人物選單可見
 
             if (state.phase === 'NIGHT') {
-                const sn = document.getElementById('step-night');
-                if (sn) sn.className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
-                
+                document.getElementById('step-night').className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
                 const activePlayer = state.nightSequence[state.currentSequenceIndex];
                 if (activePlayer) {
                     if (activePlayer.id === state.myPlayerId || state.godMode) {
-                        setVis('panel-night', true);
-                        setTxt('night-title-header', `輪到 【${activePlayer.role}】 夜間規劃！`);
+                        document.getElementById('panel-night').classList.remove('hidden');
+                        document.getElementById('night-title-header').innerText = `輪到 【${activePlayer.role}】 夜間規劃！`;
                     } else {
-                        setVis('night-blindfold-mask', true);
-                        setTxt('blindfold-desc', `當前輪到 【${activePlayer.name}】 行動暗算中...`);
+                        document.getElementById('night-blindfold-mask').classList.remove('hidden');
+                        document.getElementById('blindfold-desc').innerText = `當前輪到 【${activePlayer.name}】 行動暗算中...`;
                     }
                 }
             } else if (state.phase === 'DAY') {
-                const sd = document.getElementById('step-day');
-                if(sd) sd.className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
-                setVis('panel-day', true);
-                
-                const btnProceedVote = document.getElementById('btn-proceed-vote');
-                if(btnProceedVote) {
-                    if(state.mode === 'multiplayer' && !me.isHost) {
-                        btnProceedVote.innerText = '⚖️ 等待房主開放投票';
-                        btnProceedVote.classList.add('opacity-50', 'pointer-events-none');
-                    } else {
-                        btnProceedVote.innerText = '⚖️ 前往投票決議';
-                        btnProceedVote.classList.remove('opacity-50', 'pointer-events-none');
-                    }
-                }
-                
-                if(state.mode === 'demo') generateAndShowBotChat();
+                document.getElementById('step-day').className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
+                document.getElementById('panel-day').classList.remove('hidden');
             } else if (state.phase === 'VOTE') {
-                const sv = document.getElementById('step-vote');
-                if(sv) sv.className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
-                setVis('panel-vote', true);
-                setTxt('vote-count', `0 / ${state.totalVotesRemaining}`);
-                
-                // 還原投票面板
-                const pv = document.getElementById('panel-vote');
-                if (pv) {
-                    pv.innerHTML = `
-                        <div class="bg-zinc-950 border border-zinc-900 p-2 rounded-xl text-[10px] text-center text-gray-400 leading-relaxed">
-                            <strong>⚖️ 真品鑑定決議 (6 票跨輪分配)</strong><br>
-                            每人共有 <strong>6 票</strong> 可供 3 輪自由分配。<br>點選下方生肖卡片的 <strong>+</strong> 與 <strong>-</strong> 來調配。
-                        </div>
-                        <div class="flex justify-between items-center text-[10px] px-1">
-                            <span class="text-gray-500">本輪預配：<strong class="text-amber-500" id="vote-count">0 / ${state.totalVotesRemaining}</strong> 票</span>
-                            <button onclick="submitVotes()" class="bg-amber-900/30 hover:bg-amber-900/50 text-amber-400 border border-amber-700/50 font-bold px-3 py-1 rounded transition text-[10px] shadow">送交鑑定決議</button>
-                        </div>`;
-                }
+                document.getElementById('step-vote').className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
+                document.getElementById('panel-vote').classList.remove('hidden');
+                document.getElementById('vote-count').innerText = `0 / ${state.totalVotesRemaining}`;
             } else if (state.phase === 'ROUND_SETTLEMENT') {
-                const sv = document.getElementById('step-vote');
-                if(sv) sv.className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
-                setVis('panel-round-settlement', true);
-                setVis('grid-parent', false);
+                document.getElementById('step-vote').className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
+                document.getElementById('panel-round-settlement').classList.remove('hidden');
+                document.getElementById('grid-parent').classList.add('hidden'); // 結算時隱藏古董網格
+                document.getElementById('players-parent').classList.add('hidden'); // 結算時隱藏人物網格
                 renderRoundSettlementScreen();
             } else if (state.phase === 'END') {
-                const se = document.getElementById('step-end');
-                if(se) se.className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
-                setVis('panel-end', true);
-                setVis('grid-parent', false);
+                document.getElementById('step-end').className = 'py-1 rounded text-amber-500 bg-amber-950/20 font-bold border border-amber-900/30';
+                document.getElementById('panel-end').classList.remove('hidden');
+                document.getElementById('grid-parent').classList.add('hidden'); // 結算時隱藏古董網格
+                document.getElementById('players-parent').classList.add('hidden'); // 結算時隱藏人物網格
                 renderEndGameScreen();
             }
 
@@ -1318,23 +831,11 @@
         }
 
         function renderRoundSettlementScreen() {
-            setTxt('settlement-round-title', `第 ${state.round} 輪 鑑定公投大起底`);
-            setTxt('settlement-remaining-votes', state.totalVotesRemaining);
-            
-            const btnNext = document.getElementById('btn-next-round');
-            if (btnNext) {
-                const me = state.players.find(p=>p.id===state.myPlayerId);
-                if (state.mode === 'multiplayer' && !me.isHost) {
-                    btnNext.classList.add('hidden');
-                } else {
-                    btnNext.classList.remove('hidden');
-                    btnNext.innerText = state.round < 3 ? `進入第 ${state.round + 1} 輪暗夜 (餘 ${state.totalVotesRemaining} 票)` : `進行最終結局大揭盅`;
-                }
-            }
+            document.getElementById('settlement-round-title').innerText = `第 ${state.round} 輪 鑑定公投大起底`;
+            document.getElementById('settlement-remaining-votes').innerText = state.totalVotesRemaining;
+            document.getElementById('btn-next-round').innerText = state.round < 3 ? `進入第 ${state.round + 1} 輪暗夜 (餘 ${state.totalVotesRemaining} 票)` : `進行最終結局大揭盅`;
 
             const ledgerContainer = document.getElementById('round-settlement-ledger');
-            if (!ledgerContainer) return;
-            
             if (state.roundLedger.length === 0) {
                 ledgerContainer.innerHTML = `<p class="text-gray-600 italic text-center py-2">本輪大師皆無預配選票。</p>`;
                 return;
@@ -1354,47 +855,62 @@
             const win = correctVotes >= 18;
 
             const title = document.getElementById('end-winner-title');
-            if (title) {
-                title.innerText = win ? '🟢 許願陣營 大獲全勝！' : '👹 老朝奉陣營 隻手遮天！';
-                title.className = win ? 'text-base font-extrabold text-emerald-400 font-serif-china' : 'text-base font-extrabold text-red-500 font-serif-china';
-            }
+            title.innerText = win ? '🟢 許願陣營 大獲全勝！' : '👹 老朝奉陣營 隻手遮天！';
+            title.className = win ? 'text-base font-extrabold text-emerald-400 font-serif-china' : 'text-base font-extrabold text-red-500 font-serif-china';
             
-            setTxt('end-score-desc', win ? 
+            document.getElementById('end-score-desc').innerText = win ? 
                 `尋回真跡！好人大師們合計投給真品：${correctVotes} 票 (達標過半 18 票以上)！` :
-                `護寶失敗！好人大師們合計僅投給真品：${correctVotes} 票 (未達 18 票)。贗品橫行！`
-            );
+                `護寶失敗！好人大師們合計僅投給真品：${correctVotes} 票 (未達 18 票)。贗品橫行！`;
 
-            const artifactsReveal = document.getElementById('end-artifacts-reveal');
-            if(artifactsReveal) {
-                artifactsReveal.innerHTML = state.artifacts.map(a => `
-                    <div class="bg-zinc-900/60 p-1.5 rounded border ${a.isReal ? 'border-emerald-900/30':'border-red-950/30'}">
-                        <div class="font-bold text-gray-200 text-[10px]">${a.name}</div>
-                        <div class="${a.isReal ? 'text-emerald-400':'text-red-400'} font-bold mt-0.5">${a.isReal?'【真品】':'【贗品】'}</div>
-                        <div class="text-[8px] text-zinc-500 mt-0.5">總票: ${a.votes} 票</div>
-                    </div>
-                `).join('');
-            }
+            // 總結報表邏輯：將歷史公投帳冊聚合呈現
+            const summaryHtml = state.historicalLedgers.map((hl) => {
+                let realVotes = 0;
+                let fakeVotes = 0;
+                hl.ledger.forEach(v => {
+                    if (v.artifactName !== "無 (棄票保留)") {
+                        const art = state.artifacts.find(a => a.name === v.artifactName);
+                        if (art) {
+                            if (art.isReal) realVotes += v.votesCast;
+                            else fakeVotes += v.votesCast;
+                        }
+                    }
+                });
+                return `
+                    <tr>
+                        <td class="p-1.5 text-center text-amber-500 font-bold border-r border-zinc-800">第 ${hl.round} 輪</td>
+                        <td class="p-1.5 text-emerald-400 font-bold border-r border-zinc-800">+ ${realVotes} 票</td>
+                        <td class="p-1.5 text-red-400 font-bold">- ${fakeVotes} 票</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            const tableContainer = document.getElementById('end-summary-table');
+            if (tableContainer) tableContainer.innerHTML = summaryHtml;
 
-            const playersReveal = document.getElementById('end-players-reveal');
-            if(playersReveal) {
-                playersReveal.innerHTML = state.players.map(p => `
-                    <li class="py-1 text-[10px] flex justify-between items-center text-zinc-400">
-                        <span>${p.name} ${p.id === state.myPlayerId ? '<span class="text-amber-500">(你)</span>':''}</span> 
-                        <strong class="text-amber-500">${p.role}</strong>
-                    </li>
-                `).join('');
-            }
+            document.getElementById('end-artifacts-reveal').innerHTML = state.artifacts.map(a => `
+                <div class="bg-zinc-900/60 p-1.5 rounded border ${a.isReal ? 'border-emerald-900/30':'border-red-950/30'}">
+                    <div class="font-bold text-gray-200 text-[10px]">${a.name}</div>
+                    <div class="${a.isReal ? 'text-emerald-400':'text-red-400'} font-bold mt-0.5">${a.isReal?'【真品】':'【贗品】'}</div>
+                    <div class="text-[8px] text-zinc-500 mt-0.5">總票: ${a.votes} 票</div>
+                </div>
+            `).join('');
+
+            document.getElementById('end-players-reveal').innerHTML = state.players.map(p => `
+                <li class="py-1 text-[10px] flex justify-between items-center text-zinc-400">
+                    <span>${p.name} ${p.id === 'user_player' ? '<span class="text-amber-500">(你)</span>':''}</span> 
+                    <strong class="text-amber-500">${p.role}</strong>
+                </li>
+            `).join('');
         }
 
         function generateAndShowBotChat() {
             const chatBox = document.getElementById('solo-chat-messages');
-            if(!chatBox) return;
             chatBox.innerHTML = '';
             const me = state.players.find(p => p.id === state.myPlayerId);
             
             state.players.forEach(p => {
                 if (p.id === state.myPlayerId) return;
-                let isObscured = (p.isMuted || (me && me.isMuted)) && !state.godMode;
+                let isObscured = (p.isMuted || me.isMuted) && !state.godMode;
                 let msg = isObscured ? "（已被封口屏蔽，底牌資訊此時缺失...）" : "諸位打眼是小，丟失國寶是大，投票切記謹慎！";
                 
                 if(!isObscured) {
@@ -1411,21 +927,6 @@
             });
         }
 
-        function updateLobbyUI(code) {
-            setTxt('display-room-code', code);
-            setTxt('player-count', state.players.length);
-            
-            const elList = document.getElementById('player-list');
-            if(elList) {
-                elList.innerHTML = state.players.map(p => `
-                    <li class="py-1 flex justify-between bg-zinc-900/40 px-2 rounded border border-zinc-900">
-                        <span>👤 ${p.name} ${p.id === state.myPlayerId ? '<span class="text-amber-500">(你)</span>':''}</span>
-                        <span class="text-zinc-600 font-mono">${p.isHost ? '👑 房主' : '✓ 已就位'}</span>
-                    </li>
-                `).join('');
-            }
-        }
-
         // ----------------------------------------------
         // 互動點擊邏輯
         // ----------------------------------------------
@@ -1437,8 +938,8 @@
                     if (roleInfo.targetType === 'ARTIFACT') {
                         if (!getActiveArtifactsForCurrentRound().some(a => a.id === id)) return showToast('非當輪解鎖古董，無法施展特技！');
                         state.selectedTargetId = id;
-                        setVis('night-resolution-box', true);
-                        setTxt('night-planned-summary', `🎯 已預選獸首: [${state.artifacts.find(a => a.id === id).name}]`);
+                        document.getElementById('night-resolution-box').classList.remove('hidden');
+                        document.getElementById('night-planned-summary').innerText = `🎯 已預選獸首: [${state.artifacts.find(a => a.id === id).name}]`;
                         initGameUI();
                     }
                 }
@@ -1456,8 +957,8 @@
                     if (roleInfo.targetType === 'PLAYER') {
                         if (pId === state.myPlayerId) return showToast('無法對自己施加能力！');
                         state.selectedTargetId = pId;
-                        setVis('night-resolution-box', true);
-                        setTxt('night-planned-summary', `🎯 已鎖定專家席: [${state.players.find(p => p.id === pId).name}]`);
+                        document.getElementById('night-resolution-box').classList.remove('hidden');
+                        document.getElementById('night-planned-summary').innerText = `🎯 已鎖定專家席: [${state.players.find(p => p.id === pId).name}]`;
                         initGameUI();
                     }
                 }
@@ -1478,34 +979,30 @@
 
         function openLocalInterrogateModal() {
             const select = document.getElementById('interrogate-bot-select');
-            if(!select) return;
             const bots = state.players.filter(p => p.id !== state.myPlayerId);
             if (bots.length === 0) return showToast("目前沒有其他專家可盤問！");
             select.innerHTML = bots.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
-            setHtml('interrogate-output', '');
-            setVis('ai-interrogate-modal', true);
+            document.getElementById('interrogate-output').innerHTML = '';
+            document.getElementById('ai-interrogate-modal').classList.remove('hidden');
         }
 
-        function closeLocalInterrogateModal() { setVis('ai-interrogate-modal', false); }
+        function closeLocalInterrogateModal() { document.getElementById('ai-interrogate-modal').classList.add('hidden'); }
 
         function submitLocalInterrogation() {
-            const select = document.getElementById('interrogate-bot-select');
-            if(!select) return;
-            const botId = select.value;
+            const botId = document.getElementById('interrogate-bot-select').value;
             const targetBot = state.players.find(p => p.id === botId);
-            if(!targetBot) return;
             const isBad = ['老朝奉', '藥不然', '鄭教授'].includes(targetBot.role);
 
             const goodReplies = ["掌眼的事，黑白分明，許某行得正坐得直，昨夜我走得光明磊落！", "莫要血口噴人！黃家一脈向來只認真跡，我的票只投真品！"];
             const badReplies = ["呵呵，江湖水深，真真假假豈是你能看透的？少在展台前潑髒水！", "大師莫急，打眼是常有的事。倒是你昨晚鬼鬼祟祟，賊喊捉賊吧？"];
             const selectedReply = isBad ? badReplies[Math.floor(Math.random() * badReplies.length)] : goodReplies[Math.floor(Math.random() * goodReplies.length)];
 
-            setHtml('interrogate-output', `
+            document.getElementById('interrogate-output').innerHTML = `
                 <div class="bg-purple-950/20 p-2 rounded border border-purple-800/30 mt-2 text-purple-200">
                     <span class="font-bold text-amber-500">👤 ${targetBot.name} 答覆：</span>
                     <p class="mt-0.5 italic">「${selectedReply}」</p>
                 </div>
-            `);
+            `;
         }
 
         // ----------------------------------------------
@@ -1514,42 +1011,36 @@
         function toggleArchives() {
             const content = document.getElementById('archives-content');
             const icon = document.getElementById('archive-toggle-icon');
-            if (content && icon) {
-                if (content.classList.contains('hidden')) {
-                    content.classList.remove('hidden'); icon.innerText = '▲';
-                } else {
-                    content.classList.add('hidden'); icon.innerText = '▼';
-                }
+            if (content.classList.contains('hidden')) {
+                content.classList.remove('hidden'); icon.innerText = '▲';
+            } else {
+                content.classList.add('hidden'); icon.innerText = '▼';
             }
         }
 
         function renderArchivesLogs() {
             const cluesContainer = document.getElementById('archive-clue-logs');
-            if (cluesContainer) {
-                if (state.historicalClueLogs.length === 0) {
-                    cluesContainer.innerHTML = `<li class="text-zinc-600 italic">• 尚無回合暗夜記錄</li>`;
-                } else {
-                    cluesContainer.innerHTML = state.historicalClueLogs.map(item => `
-                        <li class="border-b border-zinc-900/40 pb-1 mb-1">
-                            <span class="text-amber-500 font-bold">[第 ${item.round} 輪夜間異動]</span><br>
-                            ${item.logs.map(log => `<span class="text-gray-400 pl-1">${log}</span>`).join('<br>')}
-                        </li>
-                    `).join('');
-                }
+            if (state.historicalClueLogs.length === 0) {
+                cluesContainer.innerHTML = `<li class="text-zinc-600 italic">• 尚無回合暗夜記錄</li>`;
+            } else {
+                cluesContainer.innerHTML = state.historicalClueLogs.map(item => `
+                    <li class="border-b border-zinc-900/40 pb-1 mb-1">
+                        <span class="text-amber-500 font-bold">[第 ${item.round} 輪夜間異動]</span><br>
+                        ${item.logs.map(log => `<span class="text-gray-400 pl-1">${log}</span>`).join('<br>')}
+                    </li>
+                `).join('');
             }
 
             const ledgerContainer = document.getElementById('archive-ledger-logs');
-            if (ledgerContainer) {
-                if (state.historicalLedgers.length === 0) {
-                    ledgerContainer.innerHTML = `<p class="text-zinc-600 italic text-center py-1">➔ 尚無投票結算記錄</p>`;
-                } else {
-                    ledgerContainer.innerHTML = state.historicalLedgers.map(item => `
-                        <div class="p-2 rounded bg-zinc-950 border border-zinc-900 text-[10px] space-y-1">
-                            <p class="text-amber-500 font-bold">[第 ${item.round} 輪公投細目帳冊]</p>
-                            ${item.ledger.map(v => `<p class="pl-1 text-zinc-400">• ${v.playerName} 👉 ${v.artifactName} (${v.votesCast}票)</p>`).join('')}
-                        </div>
-                    `).join('');
-                }
+            if (state.historicalLedgers.length === 0) {
+                ledgerContainer.innerHTML = `<p class="text-zinc-600 italic text-center py-1">➔ 尚無投票結算記錄</p>`;
+            } else {
+                ledgerContainer.innerHTML = state.historicalLedgers.map(item => `
+                    <div class="p-2 rounded bg-zinc-950 border border-zinc-900 text-[10px] space-y-1">
+                        <p class="text-amber-500 font-bold">[第 ${item.round} 輪公投細目帳冊]</p>
+                        ${item.ledger.map(v => `<p class="pl-1 text-zinc-400">• ${v.playerName} 👉 ${v.artifactName} (${v.votesCast}票)</p>`).join('')}
+                    </div>
+                `).join('');
             }
         }
 
@@ -1558,8 +1049,7 @@
         // ----------------------------------------------
         function toggleGodMode() {
             state.godMode = !state.godMode;
-            const btn = document.getElementById('btn-god-mode');
-            if(btn) btn.innerText = state.godMode ? '👁️ 關閉天眼 (還原暗流)' : '👁️ 開啟天眼 (顯示真實身份與真偽)';
+            document.getElementById('btn-god-mode').innerText = state.godMode ? '👁️ 關閉天眼 (還原暗流)' : '👁️ 開啟天眼 (顯示真實身份與真偽)';
             initGameUI();
         }
 
@@ -1574,35 +1064,31 @@
 
         function showToast(msg) {
             const t = document.getElementById('custom-toast');
-            if(!t) return;
             document.getElementById('toast-message').innerText = msg;
             t.classList.remove('opacity-0', 'pointer-events-none');
             setTimeout(() => t.classList.add('opacity-0', 'pointer-events-none'), 2500);
         }
 
         function triggerShakeEffect() {
-            const gc = document.getElementById('game-container');
-            if(!gc) return;
-            gc.classList.add('shake-active');
-            setTimeout(() => gc.classList.remove('shake-active'), 400);
+            document.getElementById('game-container').classList.add('shake-active');
+            setTimeout(() => document.getElementById('game-container').classList.remove('shake-active'), 400);
         }
 
         function showAIModal(title, content) {
-            setTxt('ai-modal-title', title);
-            setTxt('ai-modal-content', content);
-            setVis('ai-result-modal', true);
+            document.getElementById('ai-modal-title').innerText = title;
+            document.getElementById('ai-modal-content').innerText = content;
+            document.getElementById('ai-result-modal').classList.remove('hidden');
         }
 
         function closeAIModal() {
-            setVis('ai-result-modal', false);
+            document.getElementById('ai-result-modal').classList.add('hidden');
         }
 
         function triggerPhaseTransition(icon, label, subtext, callback) {
             const overlay = document.getElementById('screen-transition-overlay');
-            if(!overlay) { if(callback) callback(); return; }
-            setTxt('transition-icon', icon);
-            setTxt('transition-label', label);
-            setTxt('transition-sub', subtext);
+            document.getElementById('transition-icon').innerText = icon;
+            document.getElementById('transition-label').innerText = label;
+            document.getElementById('transition-sub').innerText = subtext;
             overlay.classList.remove('pointer-events-none');
             overlay.classList.add('opacity-100');
             setTimeout(() => {
@@ -1612,6 +1098,10 @@
         }
 
         function resetToLobby() { window.location.reload(); }
+
+        // WebRTC 的空函數佔位 (保留以後要加入的空間)
+        function initiateWebRTCHost() { showToast("WebRTC 聯網功能已保留，目前請使用單機模擬測試"); }
+        function initiateWebRTCJoin() { showToast("WebRTC 聯網功能已保留，目前請使用單機模擬測試"); }
     </script>
 </body>
 </html>
