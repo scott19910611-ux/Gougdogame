@@ -572,8 +572,13 @@
                 const userCamp = roleDatabase[state.myRole]?.camp;
                 state.myTeammates = userCamp === 'BAD' ? state.players.filter(p => p.id !== state.myPlayerId && roleDatabase[p.role]?.camp === 'BAD').map(p => p.name) : [];
                 
-                if (state.phase === 'LOBBY') updateLobbyUI();
-                else initGameUI();
+                if (state.phase === 'LOBBY') {
+                    updateLobbyUI();
+                } else {
+                    // 修復：接收到非 LOBBY 狀態時，強制加入者切換至遊戲主畫面
+                    showView('view-game');
+                    initGameUI();
+                }
             } else if (data.type === 'TOAST') {
                 showToast(data.msg);
             } else if (data.type === 'TRANSITION') {
@@ -623,11 +628,22 @@
                 votes: 0, protected: false, altered: false, shielded: false
             }));
 
+            // 修復：開局時務必賦予房主自己的身分，否則 UI 會卡在「載入中」
+            const me = state.players.find(p => p.id === state.myPlayerId);
+            if (me) {
+                state.myRole = me.role;
+                const userCamp = roleDatabase[state.myRole]?.camp;
+                state.myTeammates = userCamp === 'BAD' ? state.players.filter(p => p.id !== state.myPlayerId && roleDatabase[p.role]?.camp === 'BAD').map(p => p.name) : [];
+            }
+
             state.phase = 'NIGHT';
             state.round = 1;
             state.historicalClueLogs = [];
             state.historicalLedgers = [];
             state.actionLog = ['🔮 局中局九龍密室大門已鎖定，各流派傳人就位。'];
+
+            // 修復：開局轉場前，先廣播最初始、最完整的狀態給所有連線者
+            broadcastState();
 
             broadcastTransition("🌙", "天黑請閉眼", "對局開始，大師暗算中...");
             triggerPhaseTransition("🌙", "天黑請閉眼", "對局開始，大師暗算中...", () => {
@@ -642,7 +658,7 @@
         function enableDemoMode() {
             state.mode = 'demo';
             document.getElementById('mode-badge').innerText = '單機模擬模式';
-            document.getElementById('mode-badge').className = 'text-[6px] bg-amber-950/80 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full';
+            document.getElementById('mode-badge').className = 'text-[10px] bg-amber-950/80 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full';
             document.getElementById('demo-controller').classList.remove('hidden');
 
             const userName = document.getElementById('input-name').value.trim() || '許願傳人';
