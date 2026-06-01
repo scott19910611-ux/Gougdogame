@@ -81,7 +81,7 @@
                 <span class="bg-amber-950 px-3 py-1 rounded-md border border-amber-900/60 text-amber-400 font-mono text-xs" id="demo-round-display">第 1 / 3 輪</span>
             </div>
             
-            <div class="flex justify-between items-center pt-3 border-t border-zinc-800" id="god-mode-container">
+            <div class="flex justify-between items-center pt-3 border-t border-zinc-800">
                 <span class="text-gray-400 text-xs font-medium">上帝視角輔助：</span>
                 <button id="btn-god-mode" onclick="toggleGodMode()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-gray-200 px-4 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md">
                     👁️ 開啟天眼 (顯示真實身份)
@@ -440,7 +440,7 @@
         }
 
         function setupPeerHost(peer, roomCode) {
-            document.getElementById('mode-badge').innerText = '房主';
+            document.getElementById('mode-badge').innerText = 'WebRTC 聯網房主';
             showView('view-lobby');
             document.getElementById('webrtc-id-status').innerText = `正在向 P2P 網關註冊【aq-room-${roomCode}】...`;
 
@@ -452,11 +452,7 @@
                 document.getElementById('wait-msg').classList.add('hidden');
                 document.getElementById('demo-controller').classList.remove('hidden');
                 document.getElementById('demo-controller-title').innerText = '👑 房主控制台';
-                
-                // 確保房主不會出現天眼按鈕
-                const godModeContainer = document.getElementById('god-mode-container');
-                if(godModeContainer) godModeContainer.classList.add('hidden');
-                
+                document.getElementById('god-mode-container').classList.add('hidden');
                 updateLobbyUI();
             });
 
@@ -505,7 +501,7 @@
         }
 
         function setupPeerJoin(peer, roomCode, userName) {
-            document.getElementById('mode-badge').innerText = '訪客';
+            document.getElementById('mode-badge').innerText = 'WebRTC 聯網專家';
             showView('view-lobby');
             document.getElementById('webrtc-id-status').innerText = `正在連線至房主【aq-room-${roomCode}】...`;
 
@@ -579,7 +575,6 @@
                 if (state.phase === 'LOBBY') {
                     updateLobbyUI();
                 } else {
-                    // 修復：接收到非 LOBBY 狀態時，強制加入者切換至遊戲主畫面
                     showView('view-game');
                     initGameUI();
                 }
@@ -632,7 +627,6 @@
                 votes: 0, protected: false, altered: false, shielded: false
             }));
 
-            // 修復：開局時務必賦予房主自己的身分，否則 UI 會卡在「載入中」
             const me = state.players.find(p => p.id === state.myPlayerId);
             if (me) {
                 state.myRole = me.role;
@@ -646,7 +640,6 @@
             state.historicalLedgers = [];
             state.actionLog = ['🔮 局中局九龍密室大門已鎖定，各流派傳人就位。'];
 
-            // 修復：開局轉場前，先廣播最初始、最完整的狀態給所有連線者
             broadcastState();
 
             broadcastTransition("🌙", "天黑請閉眼", "對局開始，大師暗算中...");
@@ -661,13 +654,9 @@
         // ----------------------------------------------
         function enableDemoMode() {
             state.mode = 'demo';
-            document.getElementById('mode-badge').innerText = '單機';
+            document.getElementById('mode-badge').innerText = '單機模擬模式';
             document.getElementById('mode-badge').className = 'text-[10px] bg-amber-950/80 text-amber-400 border border-amber-800/40 px-2 py-0.5 rounded-full';
             document.getElementById('demo-controller').classList.remove('hidden');
-            
-            // 確保單機模式會顯示天眼按鈕
-            const godModeContainer = document.getElementById('god-mode-container');
-            if(godModeContainer) godModeContainer.classList.remove('hidden');
 
             const userName = document.getElementById('input-name').value.trim() || '許願傳人';
             const rolesPool = ['許願', '老朝奉', '藥不然', '鄭教授', '方震', '黃煙煙'].sort(() => Math.random() - 0.5);
@@ -943,6 +932,11 @@
                 if (spentThisRound === 0) {
                     state.roundLedger.push({ playerName: player.name, artifactName: "無 (棄票保留)", votesCast: 0, isUser: vr.id === state.myPlayerId });
                 }
+
+                // 【修正點 1】更新房主自己本地端的總剩餘票數
+                if (vr.id === state.myPlayerId) {
+                    state.totalVotesRemaining = player.totalVotesRemaining;
+                }
             });
 
             state.players.forEach(p => {
@@ -1049,7 +1043,6 @@
             const activeArts = getActiveArtifactsForCurrentRound();
             const me = state.players.find(p => p.id === state.myPlayerId);
 
-            // 易讀性優化：改為 2 欄排列，大幅增加點擊區域與文字尺寸
             grid.innerHTML = state.artifacts.map(a => {
                 const isActive = activeArts.some(x => x.id === a.id);
                 let borderClass = 'border-zinc-800 bg-zinc-900/60 text-gray-300';
@@ -1057,9 +1050,9 @@
                 let labelText = '';
                 let opacityClass = isActive ? '' : 'artifact-disabled';
 
-                const isShielded = a.shielded && !state.godMode;
+                // 【修正點 2】屏蔽只是讓查驗失敗，不應該把整個畫面塗黑，這裡拔除 a.shielded 對視覺的影響
                 const isUserMuted = me && me.isMuted && !state.godMode;
-                const isVisuallyBlocked = (isShielded || isUserMuted) && isActive;
+                const isVisuallyBlocked = isUserMuted && isActive;
 
                 const displayName = isVisuallyBlocked ? "【迷霧遮蔽】" : a.name;
                 const displayLabel = isVisuallyBlocked ? "???" : animalColors[a.name].label;
@@ -1080,7 +1073,6 @@
                     const myVoteCount = state.myVotesThisRound[a.id] || 0;
                     if (myVoteCount > 0) borderClass = 'border-amber-400 bg-amber-950/30 text-amber-300 font-extrabold gold-glow';
                     
-                    // 易讀性優化：放大按鈕與數字
                     voteControls = `
                         <div class="absolute bottom-3 w-full left-0 flex justify-center items-center gap-3 z-20" onclick="event.stopPropagation()">
                             <button onclick="changeVote(${a.id}, -1)" class="w-8 h-8 bg-zinc-800 border border-zinc-600 hover:bg-zinc-600 rounded-full text-white font-bold flex items-center justify-center shadow-lg text-lg transition active:scale-90">-</button>
@@ -1098,7 +1090,6 @@
 
                 const colorDot = isVisuallyBlocked ? 'text-zinc-500' : animalColors[a.name].dotBg;
 
-                // 易讀性優化：加深 Padding，文字放大，使卡片更明顯
                 return `
                     <button id="art-${a.id}" onclick="onArtifactClicked(${a.id})" class="relative border rounded-2xl py-6 px-3 text-center transition active:scale-95 shadow-md overflow-hidden min-h-[130px] ${borderClass} ${opacityClass}">
                         <div class="absolute top-2 left-2"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-950 border border-zinc-700 ${colorDot} shadow-sm">${displayLabel}</span></div>
@@ -1142,7 +1133,6 @@
 
                 const blurClass = isObscured ? 'filter blur-[3.5px] select-none opacity-40' : '';
 
-                // 易讀性優化：文字加大，大區塊點擊
                 return `
                     <div onclick="onPlayerCardClicked('${p.id}')" class="flex flex-col p-4 rounded-xl ${ringStyle} text-sm text-center transition cursor-pointer select-none shadow-md ${cardStyle}">
                         <div class="${blurClass}">
