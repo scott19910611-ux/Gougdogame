@@ -570,6 +570,10 @@
                 } else {
                     showView('view-game');
                     initGameUI();
+					
+					if (state.phase === 'DAY') {
+						generateAndShowBotChat();
+					}
                 }
             } else if (data.type === 'TOAST') {
                 showToast(data.msg);
