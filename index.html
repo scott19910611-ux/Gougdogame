@@ -809,18 +809,10 @@
                 if (p.role === '藥不然' && !art.protected) art.altered = true;
             });
 
-            // 4. 構建公共歷局卷宗 (僅顯示查驗順序)
+            // 4. 構建公共歷局卷宗 (僅顯示行動順序，不顯示目標)
             const publicLogs = [];
-            state.nightSequence.forEach(p => {
-                if (p.isMuted) {
-                    publicLogs.push(`🔇 大師 [${p.name}] 遭到禁言，本輪未能查驗。`);
-                } else {
-                    const act = state.sequenceActions[p.id];
-                    if (act && act.artifactId) {
-                        const art = state.artifacts.find(a => a.id === act.artifactId);
-                        publicLogs.push(`👁️ 大師 [${p.name}] 查驗了展位 [${art.name}]。`);
-                    }
-                }
+            state.nightSequence.forEach((p, index) => {
+                publicLogs.push(`⏱️ [行動順位 ${index + 1}] 大師 [${p.name}] 結束了暗夜行動。`);
             });
             state.historicalClueLogs.push({ round: state.round, logs: publicLogs });
 
@@ -1027,15 +1019,12 @@
                 let borderClass = 'border-zinc-800 bg-zinc-900/60 text-gray-300';
                 let stateBadges = '';
                 let labelText = '';
+                let myCheckBadge = ''; // 新增：自己的查驗結果標籤
                 let opacityClass = isActive ? '' : 'artifact-disabled';
 
-                const isUserMuted = me && me.isMuted && !state.godMode;
-                const isVisuallyBlocked = isUserMuted && isActive;
-
-                const displayName = isVisuallyBlocked ? "【迷霧遮蔽】" : a.name;
-                const displayLabel = isVisuallyBlocked ? "???" : animalColors[a.name].label;
-                const displayNo = isVisuallyBlocked ? "No.??" : `No.${a.id}`;
-                const blurClass = isVisuallyBlocked ? 'filter blur-[4px] select-none opacity-40' : '';
+                const displayName = a.name;
+                const displayLabel = animalColors[a.name].label;
+                const displayNo = `No.${a.id}`;
 
                 if (state.godMode) {
                     borderClass = a.isReal ? 'border-emerald-700 bg-emerald-950/30 text-emerald-300' : 'border-red-900 bg-red-950/30 text-red-300';
@@ -1044,6 +1033,29 @@
 
                 if (state.phase === 'NIGHT' && nightSelections.artifactId === a.id) {
                     borderClass = 'border-amber-400 bg-amber-950/40 text-amber-300 font-extrabold gold-glow shadow-[0_0_15px_rgba(217,119,6,0.5)]';
+                }
+
+                // 處理在生肖卡片上直接顯示查驗結果
+                if ((state.phase === 'DAY' || state.phase === 'VOTE' || state.phase === 'ROUND_SETTLEMENT') && !state.godMode) {
+                    const myAction = state.sequenceActions[state.myPlayerId];
+                    if (myAction && myAction.artifactId === a.id) {
+                        let resTxt = '';
+                        let bgClass = '';
+                        if (me && me.isMuted) {
+                            resTxt = '遭屏蔽(查驗失敗)'; bgClass = 'bg-red-950 text-red-400 border-red-800';
+                        } else if (state.myRole === '許願') {
+                            resTxt = a.isReal ? '真跡' : '贗品'; bgClass = a.isReal ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300';
+                        } else {
+                            if (a.shielded) {
+                                resTxt = '迷霧遮蔽(未知)'; bgClass = 'bg-zinc-800 text-zinc-400 border-zinc-600';
+                            } else if (a.altered) {
+                                resTxt = (!a.isReal) ? '真跡' : '贗品'; bgClass = (!a.isReal) ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300';
+                            } else {
+                                resTxt = a.isReal ? '真跡' : '贗品'; bgClass = a.isReal ? 'bg-emerald-900 text-emerald-300' : 'bg-red-900 text-red-300';
+                            }
+                        }
+                        myCheckBadge = `<div class="absolute -top-3 left-1/2 transform -translate-x-1/2 ${bgClass} text-[11px] px-2 py-0.5 rounded border font-bold z-30 whitespace-nowrap shadow-lg">🔍 ${resTxt}</div>`;
+                    }
                 }
 
                 let voteControls = '';
@@ -1060,20 +1072,22 @@
                     `;
                 }
 
-                if (state.godMode || ['老朝奉', '藥不然', '方震'].includes(state.myRole)) {
+                // 僅在上帝視角顯示印記，一般遊戲中隱藏
+                if (state.godMode) {
                     if (a.protected) stateBadges += '<span class="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800/50 px-1.5 py-0.5 rounded shadow-sm">護</span>';
                     if (a.altered) stateBadges += '<span class="text-[10px] bg-purple-950 text-purple-400 border border-purple-800/50 px-1.5 py-0.5 rounded shadow-sm">調</span>';
                     if (a.shielded) stateBadges += '<span class="text-[10px] bg-red-950 text-red-400 border border-red-800/50 px-1.5 py-0.5 rounded shadow-sm">蔽</span>';
                 }
 
-                const colorDot = isVisuallyBlocked ? 'text-zinc-500' : animalColors[a.name].dotBg;
+                const colorDot = animalColors[a.name].dotBg;
 
                 return `
-                    <button id="art-${a.id}" onclick="onArtifactClicked(${a.id})" class="relative border rounded-2xl py-6 px-3 text-center transition active:scale-95 shadow-md overflow-hidden min-h-[130px] ${borderClass} ${opacityClass}">
+                    <button id="art-${a.id}" onclick="onArtifactClicked(${a.id})" class="relative border rounded-2xl py-6 px-3 text-center transition active:scale-95 shadow-md overflow-visible min-h-[130px] ${borderClass} ${opacityClass}">
+                        ${myCheckBadge}
                         <div class="absolute top-2 left-2"><span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-zinc-950 border border-zinc-700 ${colorDot} shadow-sm">${displayLabel}</span></div>
                         <div class="absolute top-2 right-2 flex gap-1 items-center">${stateBadges}</div>
                         <div class="text-[11px] text-gray-400 mt-3 font-mono font-medium">${displayNo}</div>
-                        <div class="text-base sm:text-lg tracking-wider font-bold font-serif-china mt-1 ${voteControls ? 'mb-8' : 'mb-2'} ${blurClass}">${displayName}</div>
+                        <div class="text-base sm:text-lg tracking-wider font-bold font-serif-china mt-1 ${voteControls ? 'mb-8' : 'mb-2'}">${displayName}</div>
                         ${labelText} ${voteControls}
                     </button>
                 `;
@@ -1105,23 +1119,17 @@
 
                 const ringStyle = isCurrentActing ? 'ring-2 ring-amber-500/60 shadow-[0_0_15px_rgba(217,119,6,0.3)]' : 'border';
                 
-                const isObscured = (p.isMuted || (me && me.isMuted)) && !isMeObj && !state.godMode;
-                const nameDisplay = isObscured ? "【已屏蔽的大師】" : p.name;
-                
-                let roleDisplay = '身分: 隱藏專家';
-                if (showIdentity) roleDisplay = `身分: ${p.role}`;
-                else if (isObscured) roleDisplay = '身分: ???';
-
-                const blurClass = isObscured ? 'filter blur-[3.5px] select-none opacity-40' : '';
+                const nameDisplay = p.name;
+                const roleDisplay = showIdentity ? `身分: ${p.role}` : '身分: 隱藏專家';
 
                 return `
                     <div onclick="onPlayerCardClicked('${p.id}')" class="flex flex-col p-4 rounded-xl ${ringStyle} text-sm text-center transition cursor-pointer select-none shadow-md ${cardStyle}">
-                        <div class="${blurClass}">
+                        <div>
                             <div class="font-bold text-sm sm:text-base truncate mb-1.5">${nameDisplay}</div>
                             <div class="text-xs text-amber-500/80 font-medium tracking-wide">${roleDisplay}</div>
                         </div>
                         <div class="flex justify-center gap-1.5 mt-3 min-h-[22px]">
-                            ${p.isMuted ? '<span class="bg-red-950/80 text-red-400 border border-red-900/50 text-[10px] px-1.5 py-0.5 rounded font-bold shadow-sm">🔇 禁言</span>' : ''}
+                            ${(state.godMode && p.isMuted) ? '<span class="bg-red-950/80 text-red-400 border border-red-900/50 text-[10px] px-1.5 py-0.5 rounded font-bold shadow-sm">🔇 禁言</span>' : ''}
                             ${isCurrentActing ? '<span class="bg-amber-950/80 text-amber-400 border border-amber-900/50 text-[10px] px-1.5 py-0.5 rounded font-bold animate-pulse shadow-sm">⚡ 行動中</span>' : ''}
                         </div>
                     </div>
@@ -1287,7 +1295,7 @@
                         const art = state.artifacts.find(a => a.id === act.artifactId);
                         let resultStr = "";
                         if (me.role === '許願') {
-                            resultStr = art.isReal ? "真品" : "贗品"; // 真眼無視一切
+                            resultStr = art.isReal ? "真品" : "贗品"; 
                         } else {
                             if (art.shielded) resultStr = "未知 (遭迷霧遮蔽)";
                             else if (art.altered) resultStr = (!art.isReal) ? "真品" : "贗品";
@@ -1310,21 +1318,51 @@
                 }
             }
 
-            // 2. 生成其他專家的對話
+            // 2. 生成其他專家的對話 (AI 智慧發言)
             state.players.forEach(p => {
                 if (p.id === state.myPlayerId) return;
                 
-                let isObscured = (p.isMuted || me.isMuted) && !state.godMode;
-                let msg = isObscured ? "（已被封口屏蔽，底牌資訊此時缺失...）" : "諸位打眼是小，丟失國寶是大，投票切記謹慎！";
+                // 被禁言的玩家直接不發言 (隱藏狀態，讓玩家自己推理誰沒說話)
+                if (p.isMuted && !state.godMode) return; 
                 
-                if(!isObscured) {
-                    if (p.role === '老朝奉') msg = "老夫看那幾件假貨做得倒挺真，大家不妨考慮投票給它們。";
-                    if (p.role === '許願') msg = "各位，我昨夜掌了眼，心裡已有定奪，跟著我投便可。";
+                let msg = "";
+                const act = state.sequenceActions[p.id];
+                const activeArts = getActiveArtifactsForCurrentRound();
+                const randomArt = activeArts[Math.floor(Math.random() * activeArts.length)];
+                
+                const roleCamp = roleDatabase[p.role]?.camp || 'GOOD';
+
+                if (roleCamp === 'GOOD') {
+                    // 好人根據實際行動發言
+                    if (act && act.artifactId) {
+                        const art = state.artifacts.find(a => a.id === act.artifactId);
+                        const seeReal = art.shielded ? null : (art.altered ? !art.isReal : art.isReal);
+                        if (seeReal === null) {
+                            msg = `昨晚我查了 [${art.name}]，但展台上起了黑煙，什麼都看不清！有老朝奉在搗鬼！`;
+                        } else {
+                            msg = `各位，我昨夜查驗了 [${art.name}]，我看它是${seeReal ? '真品' : '贗品'}，大家可以跟著我投。`;
+                        }
+                    } else if (act && act.playerId) {
+                        msg = `我昨晚探了探某人的底細，目前局勢還不明朗，投票切記謹慎！`;
+                    } else {
+                        msg = `諸位打眼是小，丟失國寶是大，別瞎跟票！`;
+                    }
+                } else {
+                    // 壞人故意撒謊或帶風向
+                    if (p.role === '老朝奉') {
+                        msg = `老夫看那 [${randomArt.name}] 釉色不對，做得倒挺真，大家不妨考慮把假票投給它。`;
+                    } else if (p.role === '藥不然') {
+                        msg = `別聽信別人的片面之詞，昨晚肯定有人動了手腳，我看 [${randomArt.name}] 才是真跡。`;
+                    } else if (p.role === '鄭教授') {
+                        msg = `學術不容造假！我看場上有幾個自稱好人的，滿嘴胡言亂語，大家別信。`;
+                    } else {
+                        msg = `這局勢太亂了，真真假假豈是能輕易看透的？`;
+                    }
                 }
 
                 chatBox.innerHTML += `
                     <div class="bg-zinc-900 p-3 rounded-lg border border-zinc-800 text-sm shadow-sm transition hover:bg-zinc-800/80">
-                        <span class="font-bold text-amber-500">👤 ${isObscured ? '【已屏蔽的大師】': p.name}</span>
+                        <span class="font-bold text-amber-500">👤 ${p.name} ${state.godMode && p.isMuted ? '<span class="text-xs text-red-500">(被禁言)</span>' : ''}</span>
                         <p class="text-gray-300 mt-1.5 leading-relaxed">${msg}</p>
                     </div>
                 `;
