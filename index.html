@@ -27,7 +27,7 @@
             background-color: rgba(15, 20, 28, 0.9);
             border: 1px solid rgba(255, 255, 255, 0.08);
         }
-
+        
         @keyframes shake {
             0%, 100% { transform: translateX(0) translateY(0); }
             10%, 30%, 50%, 70%, 90% { transform: translateX(-4px) translateY(-1px); }
@@ -47,6 +47,21 @@
             pointer-events: none;
             filter: grayscale(85%);
         }
+        .player-selected {
+            border-color: #f59e0b !important;
+            background-color: rgba(245, 158, 11, 0.2) !important;
+            box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+        }
+        .player-assassinate-selected {
+            border-color: #ef4444 !important; /* 紅色用於暗殺/盲狙 */
+            background-color: rgba(239, 68, 68, 0.2) !important;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
+        }
+        .player-hunt-selected {
+            border-color: #3b82f6 !important;
+            background-color: rgba(59, 130, 246, 0.2) !important;
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
+        }
 
         .gold-scrollbar::-webkit-scrollbar { width: 6px; }
         .gold-scrollbar::-webkit-scrollbar-track { background: #05070a; border-radius: 10px; }
@@ -55,12 +70,14 @@
 </head>
 <body class="min-h-screen text-gray-200 flex items-center justify-center p-3 sm:p-5 overflow-x-hidden">
 
+    <!-- 全螢幕轉場特效 -->
     <div id="screen-transition-overlay" class="fixed inset-0 bg-black z-50 pointer-events-none opacity-0 transition-all duration-700 flex flex-col items-center justify-center text-center">
         <div id="transition-icon" class="text-7xl mb-6 animate-bounce">🌙</div>
         <h2 id="transition-label" class="text-3xl font-extrabold tracking-widest text-amber-500 font-serif-china">天黑請閉眼...</h2>
         <p id="transition-sub" class="text-sm text-gray-400 mt-3 tracking-widest">大師暗中較量中</p>
     </div>
 
+    <!-- 提示框 -->
     <div id="custom-toast" class="fixed top-6 left-1/2 transform -translate-x-1/2 bg-zinc-900 border border-amber-600/80 text-amber-200 px-6 py-3 rounded-xl shadow-2xl z-50 transition-all duration-300 opacity-0 pointer-events-none text-center text-sm font-bold min-w-[280px]">
         <span id="toast-message">提示訊息</span>
     </div>
@@ -80,7 +97,6 @@
                 <span class="text-amber-500 font-bold flex items-center gap-2" id="demo-controller-title">🤖 單機對戰控制台</span>
                 <span class="bg-amber-950 px-3 py-1 rounded-md border border-amber-900/60 text-amber-400 font-mono text-xs" id="demo-round-display">第 1 / 3 輪</span>
             </div>
-            
             <div id="god-mode-wrapper" class="flex justify-between items-center pt-3 border-t border-zinc-800">
                 <span class="text-gray-400 text-xs font-medium">上帝視角輔助：</span>
                 <button id="btn-god-mode" onclick="toggleGodMode()" class="bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-gray-200 px-4 py-1.5 rounded-lg text-xs font-bold transition-all shadow-md">
@@ -91,14 +107,12 @@
 
         <!-- 視圖 1: 登入 -->
         <div id="view-login" class="space-y-6">
-            
             <div class="bg-amber-950/20 border border-amber-900/50 p-4 rounded-xl">
                 <p class="text-amber-500 font-bold mb-2 text-sm">💡 網路連線溫馨提示：</p>
                 <p class="text-xs text-gray-300 leading-relaxed">
-                    若您希望進行 WebRTC 多人連線，<strong class="text-amber-400">請務必點擊右上角下載/匯出此 HTML 檔案</strong>，並於您的電腦或手機瀏覽器開啟。預覽環境中的安全限制會阻擋連線。
+                    若您希望進行 WebRTC 多人連線，<strong class="text-amber-400">請務必點擊右上角下載此 HTML 檔案</strong>，並於瀏覽器開啟。預覽環境安全限制會阻擋連線。
                 </p>
             </div>
-
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-amber-500/90 mb-1.5">您的江湖代號</label>
@@ -109,16 +123,10 @@
                     <input type="text" id="input-room" placeholder="例如: 8888" class="w-full bg-zinc-950 border border-zinc-700 rounded-xl px-4 py-3 text-gray-100 placeholder-zinc-600 text-sm font-mono outline-none focus:border-amber-500 transition-colors shadow-inner">
                 </div>
             </div>
-            
             <div class="grid grid-cols-2 gap-3 pt-2">
-                <button onclick="initiateWebRTCHost()" class="bg-zinc-800 hover:bg-zinc-700 text-amber-500 border border-zinc-600 font-bold py-3 px-4 rounded-xl transition text-sm shadow-md active:scale-95">
-                    👑 建立房間 (房主)
-                </button>
-                <button onclick="initiateWebRTCJoin()" class="bg-zinc-800 hover:bg-zinc-700 text-gray-300 border border-zinc-600 font-bold py-3 px-4 rounded-xl transition text-sm shadow-md active:scale-95">
-                    🤝 加入房間 (訪客)
-                </button>
+                <button onclick="initiateWebRTCHost()" class="bg-zinc-800 hover:bg-zinc-700 text-amber-500 border border-zinc-600 font-bold py-3 px-4 rounded-xl transition text-sm shadow-md active:scale-95">👑 建立房間</button>
+                <button onclick="initiateWebRTCJoin()" class="bg-zinc-800 hover:bg-zinc-700 text-gray-300 border border-zinc-600 font-bold py-3 px-4 rounded-xl transition text-sm shadow-md active:scale-95">🤝 加入房間</button>
             </div>
-            
             <div class="border-t border-zinc-800 pt-5 text-center">
                 <button onclick="enableDemoMode()" class="w-full bg-gradient-to-r from-amber-900/40 to-amber-800/40 hover:from-amber-800/60 hover:to-amber-700/60 text-amber-400 border border-amber-700/50 font-bold py-4 px-4 rounded-xl transition text-base shadow-[0_0_15px_rgba(217,119,6,0.15)] active:scale-95">
                     🤖 單機對戰 (人機對局)
@@ -147,11 +155,12 @@
         <div id="view-game" class="hidden space-y-6">
             
             <!-- 遊戲進程 Stepper -->
-            <div class="grid grid-cols-4 gap-2 text-center text-xs bg-zinc-950 p-2 rounded-xl border border-zinc-800 shadow-inner">
+            <div class="grid grid-cols-5 gap-1 text-center text-[10px] sm:text-xs bg-zinc-950 p-2 rounded-xl border border-zinc-800 shadow-inner">
                 <div id="step-night" class="py-1.5 rounded-lg text-amber-500 bg-amber-950/30 font-bold border border-amber-900/50">🌙 暗夜</div>
                 <div id="step-day" class="py-1.5 rounded-lg text-gray-500 font-medium">☀️ 白天</div>
-                <div id="step-vote" class="py-1.5 rounded-lg text-gray-500 font-medium">⚖️ 投票</div>
-                <div id="step-end" class="py-1.5 rounded-lg text-gray-500 font-medium">🏁 終局</div>
+                <div id="step-vote" class="py-1.5 rounded-lg text-gray-500 font-medium">⚖️ 鑒寶</div>
+                <div id="step-final" class="py-1.5 rounded-lg text-gray-500 font-medium">🕵️ 鑒人</div>
+                <div id="step-end" class="py-1.5 rounded-lg text-gray-500 font-medium">🏁 結算</div>
             </div>
 
             <!-- 身分資訊卡 -->
@@ -163,6 +172,10 @@
                         <span id="role-badge" class="text-xs px-2 py-1 rounded-md font-bold shadow-sm">好人陣營</span>
                     </div>
                     <p id="my-camp-desc" class="text-sm text-gray-300 mt-2 leading-relaxed font-medium">能力加載中...</p>
+                    <!-- 總票數顯示區塊 -->
+                    <div class="mt-2 bg-amber-950/40 border border-amber-900/60 rounded px-2 py-1 inline-block">
+                        <p class="text-xs text-amber-300 font-bold">總剩餘鑒寶票數：<span id="my-total-votes" class="text-base text-amber-400 mx-1 drop-shadow-md">6</span> 票</p>
+                    </div>
                 </div>
                 <div id="teammates-box" class="hidden mt-3 pt-3 border-t border-zinc-800">
                     <p class="text-sm text-red-400 font-bold">👹 同夥大師：<span id="my-teammates" class="text-gray-200 ml-1"></span></p>
@@ -201,32 +214,26 @@
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> 大師議論大會中...
                     </span>
                     <button id="btn-proceed-vote" onclick="proceedToVotePhase()" class="bg-amber-800/40 hover:bg-amber-700/50 text-amber-300 border border-amber-700/50 text-xs px-4 py-2 rounded-lg transition font-bold shadow-md active:scale-95">
-                        ⚖️ 發起投票決議
+                        ⚖️ 發起鑒寶決議
                     </button>
                 </div>
-
                 <div id="solo-chat-box" class="block bg-zinc-950 p-4 rounded-xl border border-zinc-800 space-y-3 shadow-inner">
                     <h4 class="text-xs font-bold text-amber-500 border-b border-zinc-800 pb-2 flex justify-between items-center font-serif-china">
-                        <span>💬 密室白日議論 (AI 電腦專家發言)</span>
+                        <span>💬 密室白日議論 (AI 專家發言)</span>
                     </h4>
                     <div id="solo-chat-messages" class="text-sm space-y-3 max-h-[300px] overflow-y-auto pr-2 gold-scrollbar"></div>
                 </div>
-
                 <div class="grid grid-cols-2 gap-3">
-                    <button onclick="triggerLocalAIStrategy()" class="bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-600 font-bold py-3 rounded-xl text-sm transition shadow-md active:scale-95">
-                        ✨ 系統局勢推演
-                    </button>
-                    <button onclick="openLocalInterrogateModal()" class="bg-zinc-800 hover:bg-zinc-700 text-purple-400 border border-zinc-600 font-bold py-3 rounded-xl text-sm transition shadow-md active:scale-95">
-                        ✨ 專家心戰盤問
-                    </button>
+                    <button onclick="triggerLocalAIStrategy()" class="bg-zinc-800 hover:bg-zinc-700 text-amber-400 border border-zinc-600 font-bold py-3 rounded-xl text-sm transition shadow-md active:scale-95">✨ 系統局勢推演</button>
+                    <button onclick="openLocalInterrogateModal()" class="bg-zinc-800 hover:bg-zinc-700 text-purple-400 border border-zinc-600 font-bold py-3 rounded-xl text-sm transition shadow-md active:scale-95">✨ 專家心戰盤問</button>
                 </div>
             </div>
 
             <!-- 投票區 -->
             <div id="panel-vote" class="hidden space-y-3">
                 <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-xl text-xs text-center text-gray-300 leading-relaxed shadow-inner">
-                    <strong class="text-amber-500 text-sm mb-1 block">⚖️ 真品鑑定決議</strong>
-                    本輪可為展出的生肖古董進行投票。<br>請點選下方生肖卡片的 <strong>+</strong> 與 <strong>-</strong> 調配。
+                    <strong class="text-amber-500 text-sm mb-1 block">⚖️ 真品鑑定決議 (6 票跨輪分配)</strong>
+                    每人共有 <strong class="text-amber-400">6 票</strong> 可供 3 輪自由分配（本輪可不投，也可梭哈）。<br>請點選下方生肖卡片的 <strong>+</strong> 與 <strong>-</strong> 調配。
                 </div>
                 <div class="flex justify-between items-center bg-zinc-900 p-3 rounded-xl border border-zinc-800 shadow-sm">
                     <span class="text-sm text-gray-300 font-medium">本輪預配：<strong class="text-amber-500 text-lg ml-1" id="vote-count">0</strong> 票</span>
@@ -242,23 +249,40 @@
                     <h3 class="text-base font-bold text-amber-500 font-serif-china mb-1" id="settlement-round-title">本輪公投賬目大起底</h3>
                     <p class="text-xs text-gray-400">所有大師本輪投出的明細票數，供您進行身分推理</p>
                 </div>
-                <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 space-y-2 shadow-inner" id="round-settlement-ledger" class="max-h-56 overflow-y-auto gold-scrollbar">
+                <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 space-y-2 shadow-inner" id="round-settlement-ledger" class="max-h-56 overflow-y-auto gold-scrollbar"></div>
+                <div class="bg-zinc-900 border border-zinc-800 p-3 rounded-xl text-center text-sm shadow-sm">
+                    <p class="text-zinc-400 font-medium">您的剩餘總票數：<span class="text-amber-400 font-bold text-lg font-mono ml-1" id="settlement-remaining-votes">6</span> 票</p>
                 </div>
                 <button id="btn-next-round" onclick="advanceToNextRound()" class="w-full bg-gradient-to-r from-amber-900/40 to-amber-800/40 hover:from-amber-800/60 hover:to-amber-700/60 border border-amber-700/50 text-amber-300 font-bold py-3.5 rounded-xl text-sm transition shadow-lg active:scale-95">
                     下一個回合
                 </button>
             </div>
 
-            <!-- 專家人物展示區 (改為 2 欄網格提升點擊範圍) -->
+            <!-- 終局大師指認 (捉拿老朝奉 / 盲狙) -->
+            <div id="panel-final-vote" class="hidden space-y-4">
+                <div class="bg-zinc-900 border border-red-900/30 p-5 rounded-2xl text-center shadow-xl">
+                    <h3 class="text-xl font-bold text-red-500 font-serif-china mb-2" id="final-vote-title">🕵️ 終局指認：捉拿老朝奉！</h3>
+                    <p class="text-sm text-gray-300 leading-relaxed" id="final-vote-desc">三輪鑒寶已結束！請根據蛛絲馬跡，投票指控誰是幕後黑手「老朝奉」。<br>若好人成功抓捕，即可逆轉獲勝！</p>
+                </div>
+                <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-xl shadow-inner text-center">
+                    <p class="text-sm text-amber-500/90 font-bold mb-2">您要指控/暗殺的目標：</p>
+                    <p class="text-base text-gray-200 font-extrabold mb-4" id="final-target-summary">尚未選擇 (請點擊下方大師卡片)</p>
+                    <button onclick="submitFinalVote()" class="w-full bg-red-900/40 hover:bg-red-800/50 border border-red-700/50 text-red-300 font-bold py-3.5 rounded-xl text-sm transition shadow-lg active:scale-95">
+                        送出指認決議
+                    </button>
+                </div>
+            </div>
+
+            <!-- 專家人物展示區 -->
             <div class="space-y-3" id="players-parent">
                 <div class="flex justify-between items-center px-1">
-                    <h3 class="text-sm font-bold text-amber-500 tracking-wide font-serif-china">👥 密室大師陣容</h3>
-                    <span class="text-xs text-purple-400/80 animate-pulse font-medium">大師技能目標可點選</span>
+                    <h3 class="text-sm font-bold text-amber-500 tracking-wide font-serif-china" id="players-section-title">👥 密室大師陣容</h3>
+                    <span class="text-xs text-purple-400/80 animate-pulse font-medium" id="players-section-hint">大師技能目標可點選</span>
                 </div>
                 <div id="player-slots-grid" class="grid grid-cols-2 gap-3"></div>
             </div>
 
-            <!-- 獸首展示區 (改為 2 欄網格放大點擊範圍) -->
+            <!-- 獸首展示區 -->
             <div class="space-y-3" id="grid-parent">
                 <div class="flex justify-between items-center px-1">
                     <h3 class="text-sm font-bold text-amber-500 tracking-wide font-serif-china" id="artifact-title-banner">十二獸首寶圖</h3>
@@ -291,9 +315,15 @@
 
             <!-- 終局大結算 -->
             <div id="panel-end" class="hidden bg-zinc-900 p-5 rounded-2xl border border-amber-800/30 space-y-4 text-center shadow-2xl">
-                <div class="inline-block text-5xl drop-shadow-md mb-2">🏁</div>
-                <h2 id="end-winner-title" class="text-xl font-extrabold text-amber-500 font-serif-china drop-shadow-sm">老朝奉陣營 隻手遮天！</h2>
-                <p id="end-score-desc" class="text-sm text-gray-300 leading-relaxed font-medium"></p>
+                <div class="inline-block text-5xl drop-shadow-md mb-2" id="end-winner-icon">🏁</div>
+                <h2 id="end-winner-title" class="text-xl font-extrabold text-amber-500 font-serif-china drop-shadow-sm">結算中...</h2>
+                
+                <div class="bg-zinc-950 p-4 rounded-xl border border-zinc-800 text-left space-y-2 shadow-inner">
+                    <p class="text-sm font-bold text-amber-500 mb-2 border-b border-zinc-800 pb-1">📜 結算報告：</p>
+                    <p id="end-assassin-desc" class="text-sm text-gray-300 leading-relaxed font-medium hidden"></p>
+                    <p id="end-vote-desc" class="text-sm text-gray-300 leading-relaxed font-medium hidden"></p>
+                    <p id="end-score-desc" class="text-sm text-gray-300 leading-relaxed font-medium"></p>
+                </div>
                 
                 <!-- 終局大結算表格 -->
                 <div class="border-t border-zinc-800 pt-4 mt-2 text-left">
@@ -307,9 +337,7 @@
                                     <th class="p-3 font-bold">贗品(失分)</th>
                                 </tr>
                             </thead>
-                            <tbody id="end-summary-table" class="divide-y divide-zinc-800/60">
-                                <!-- 動態插入表格內容 -->
-                            </tbody>
+                            <tbody id="end-summary-table" class="divide-y divide-zinc-800/60"></tbody>
                         </table>
                     </div>
                 </div>
@@ -326,7 +354,6 @@
                     再開一局，重入江湖
                 </button>
             </div>
-
         </div>
     </div>
 
@@ -378,38 +405,37 @@
         };
 
         const roleDatabase = {
-            '方震': { roleName: '方震 (治安官)', camp: 'GOOD', skillTitle: '【查驗與守護】', skillDesc: '查驗 1 個古董，並暗中保護其免受調包干擾。', targetType: 'ARTIFACT' },
-            '老朝奉': { roleName: '老朝奉 (邪派頭目)', camp: 'BAD', skillTitle: '【查驗與屏蔽】', skillDesc: '查驗 1 個古董，並用黑煙遮掩其真偽。', targetType: 'ARTIFACT' },
-            '藥不然': { roleName: '藥不然 (贗品大師)', camp: 'BAD', skillTitle: '【查驗與調包】', skillDesc: '查驗 1 個古董，並顛倒其真偽狀態。', targetType: 'ARTIFACT' },
-            '鄭教授': { roleName: '鄭教授 (偽裝專家)', camp: 'BAD', skillTitle: '【查驗與禁言】', skillDesc: '查驗 1 個古董，並選定 1 名大師禁言。', targetType: 'BOTH' },
+            '方震': { roleName: '方震 (治安官)', camp: 'GOOD', skillTitle: '【查驗與探人】', skillDesc: '查驗 1 個古董真偽，並查驗 1 名大師所屬陣營。', targetType: 'BOTH' },
+            '老朝奉': { roleName: '老朝奉 (邪派首領)', camp: 'BAD', skillTitle: '【查驗與屏蔽】', skillDesc: '查驗 1 個古董，並用黑煙遮掩其真偽(對後手有效)。', targetType: 'ARTIFACT' },
+            '藥不然': { roleName: '藥不然 (刺客)', camp: 'BAD', skillTitle: '【查驗與調包】', skillDesc: '查驗 1 個古董，並顛倒其真偽狀態(對後手有效)。', targetType: 'ARTIFACT' },
+            '鄭國渠': { roleName: '鄭國渠 (偽裝專家)', camp: 'BAD', skillTitle: '【查驗與禁言】', skillDesc: '查驗 1 個古董，並選定 1 名大師禁言使其技能失效。', targetType: 'BOTH' },
             '許願': { roleName: '許願 (好人領袖)', camp: 'GOOD', skillTitle: '【真眼通天】', skillDesc: '查驗 1 個古董，真眼將無視一切屏蔽與調包。', targetType: 'ARTIFACT' },
-            '黃煙煙': { roleName: '黃煙煙 (好人專家)', camp: 'GOOD', skillTitle: '【查驗與探人】', skillDesc: '查驗 1 個古董，並查驗 1 名大師的所屬陣營。', targetType: 'BOTH' },
-            '路人專家甲': { roleName: '路人專家 (好人陣營)', camp: 'GOOD', skillTitle: '【掌眼查驗】', skillDesc: '查驗 1 個古董的真偽。', targetType: 'ARTIFACT' },
-            '路人專家乙': { roleName: '路人專家 (好人陣營)', camp: 'GOOD', skillTitle: '【掌眼查驗】', skillDesc: '查驗 1 個古董的真偽。', targetType: 'ARTIFACT' }
+            '黃煙煙': { roleName: '黃煙煙 (好人專家)', camp: 'GOOD', skillTitle: '【掌眼查驗】', skillDesc: '查驗 1 個古董的真偽。', targetType: 'ARTIFACT' },
+            '木戶加奈': { roleName: '木戶加奈 (好人專家)', camp: 'GOOD', skillTitle: '【掌眼查驗】', skillDesc: '查驗 1 個古董的真偽。', targetType: 'ARTIFACT' },
+            '姬雲浮': { roleName: '姬雲浮 (好人專家)', camp: 'GOOD', skillTitle: '【掌眼查驗】', skillDesc: '查驗 1 個古董的真偽。', targetType: 'ARTIFACT' }
         };
 
         let state = {
             mode: 'demo', godMode: false, round: 1, phase: 'LOBBY', roomCode: '',
             players: [], myPlayerId: 'user_player', myRole: '', myTeammates: [], artifacts: [],
-            actionLog: [], myVotesThisRound: {}, roundLedger: [],
+            actionLog: [], myVotesThisRound: {}, totalVotesRemaining: 6, roundLedger: [],
             currentSequenceIndex: 0, nightSequence: [], sequenceActions: {},
-            historicalClueLogs: [], historicalLedgers: [], votesReceived: []
+            historicalClueLogs: [], historicalLedgers: [], votesReceived: [],
+            finalVotesReceived: [], finalVotesResult: {},
+            finalAssassinations: { laocaofeng: null, yaoburan: null }
         };
 
         let nightSelections = { artifactId: null, playerId: null };
+        let finalSelectionId = null;
 
         let isMultiplayer = false;
         let isHost = false;
 
-        // WebRTC 變數
         let peer = null;
-        let connections = []; // 房主專用
-        let hostConn = null;  // 連線者專用
+        let connections = []; 
+        let hostConn = null;  
         const PEER_PREFIX = 'gudong-room-';
 
-        // ----------------------------------------------
-        // 🌐 WebRTC 連線與防護邏輯
-        // ----------------------------------------------
         function checkCanvasEnvironment() {
             try { return window.location.hostname.includes('googleusercontent.com') || window.parent !== window; } 
             catch (e) { return true; }
@@ -419,16 +445,14 @@
             const userName = document.getElementById('input-name').value.trim() || '房主大師';
             const roomCode = document.getElementById('input-room').value.trim();
             if(!roomCode) return showToast('請輸入四位數房號！');
-
             if (checkCanvasEnvironment()) return showToast("⚠️ Canvas 安全限制！請點擊右上角「下載」檔案後於本機瀏覽器開啟使用。");
 
             isMultiplayer = true;
             isHost = true;
             state.mode = 'webrtc';
             state.myPlayerId = 'host_player';
-            state.players = [{ id: state.myPlayerId, name: userName, role: '', isBot: false, isMuted: false, isHost: true }];
+            state.players = [{ id: state.myPlayerId, name: userName, role: '', isBot: false, isMuted: false, totalVotesRemaining: 6, isHost: true }];
             
-            // 隱藏天眼輔助
             document.getElementById('god-mode-wrapper').classList.add('hidden');
 
             try {
@@ -478,7 +502,6 @@
             const userName = document.getElementById('input-name').value.trim() || '無名專家';
             const roomCode = document.getElementById('input-room').value.trim();
             if(!roomCode) return showToast('請輸入四位數房號！');
-
             if (checkCanvasEnvironment()) return showToast("⚠️ Canvas 安全限制！請點擊右上角「下載」檔案後於本機瀏覽器開啟使用。");
 
             isMultiplayer = true;
@@ -531,7 +554,7 @@
             if (!isHost) return;
             if (data.type === 'JOIN') {
                 if (state.phase !== 'LOBBY') return;
-                state.players.push({ id: peerId, name: data.name, role: '', isBot: false, isMuted: false, isHost: false });
+                state.players.push({ id: peerId, name: data.name, role: '', isBot: false, isMuted: false, totalVotesRemaining: 6, isHost: false });
                 updateLobbyUI();
                 broadcastState();
                 showToast(`${data.name} 踏入密室`);
@@ -541,6 +564,8 @@
                 runNightTurnLogic();
             } else if (data.type === 'VOTE_ACTION') {
                 handleMultiplayerVote(peerId, data.votes);
+            } else if (data.type === 'FINAL_ACTION') {
+                handleMultiplayerFinalAction(peerId, data.choice, data.role);
             }
         }
 
@@ -556,6 +581,7 @@
                 const me = state.players.find(p => p.id === state.myPlayerId);
                 if (me) {
                     state.myRole = me.role;
+                    state.totalVotesRemaining = me.totalVotesRemaining;
                 }
                 
                 const userCamp = roleDatabase[state.myRole]?.camp;
@@ -566,12 +592,10 @@
                 } else {
                     showView('view-game');
                     initGameUI();
-					
-					if (state.phase === 'DAY') {
-						setTimeout(() => {
-							generateAndShowBotChat();
-						}, 100);
-					}
+                    
+                    if (state.phase === 'DAY') {
+                        setTimeout(() => { generateAndShowBotChat(); }, 100);
+                    }
                 }
             } else if (data.type === 'TOAST') {
                 showToast(data.msg);
@@ -604,23 +628,37 @@
             ).join('');
         }
 
+        function generateBalancedArtifacts() {
+            let arts = [];
+            let nameIdx = 0;
+            // 確保每輪都是 2真 2假
+            for(let r=0; r<3; r++) {
+                let roundTrueFalse = [true, true, false, false].sort(() => Math.random() - 0.5);
+                for(let i=0; i<4; i++) {
+                    let aName = animalNames[nameIdx];
+                    arts.push({
+                        id: nameIdx + 1, name: aName, isReal: roundTrueFalse[i], color: animalColors[aName].code,
+                        votes: 0, protected: false, altered: false, shielded: false
+                    });
+                    nameIdx++;
+                }
+            }
+            return arts;
+        }
+
         function startWebRTCGame() {
             if (!isHost) return;
             if (state.players.length < 2) return showToast('至少需要 2 人才能開局連線！');
             
             while (state.players.length < 8) {
                 const botId = `bot_${state.players.length}`;
-                state.players.push({ id: botId, name: `電腦專家 AI-${state.players.length}`, role: '', isBot: true, isMuted: false, isHost: false });
+                state.players.push({ id: botId, name: `電腦專家 AI-${state.players.length}`, role: '', isBot: true, isMuted: false, totalVotesRemaining: 6, isHost: false });
             }
 
-            const rolesPool = ['許願', '老朝奉', '藥不然', '鄭教授', '方震', '黃煙煙', '路人專家甲', '路人專家乙'].sort(() => Math.random() - 0.5);
+            const rolesPool = ['許願', '老朝奉', '藥不然', '鄭國渠', '方震', '黃煙煙', '木戶加奈', '姬雲浮'].sort(() => Math.random() - 0.5);
             state.players.forEach((p, i) => { p.role = rolesPool[i]; });
 
-            let trueFalseArr = [true, true, true, true, true, true, false, false, false, false, false, false].sort(() => Math.random() - 0.5);
-            state.artifacts = animalNames.map((name, idx) => ({
-                id: idx + 1, name: name, isReal: trueFalseArr[idx], color: animalColors[name].code,
-                votes: 0, protected: false, altered: false, shielded: false
-            }));
+            state.artifacts = generateBalancedArtifacts();
 
             const me = state.players.find(p => p.id === state.myPlayerId);
             if (me) {
@@ -643,9 +681,6 @@
             });
         }
 
-        // ----------------------------------------------
-        // 🤖 單機/主機共用核心邏輯
-        // ----------------------------------------------
         function enableDemoMode() {
             state.mode = 'demo';
             document.getElementById('mode-badge').innerText = '單機';
@@ -653,25 +688,22 @@
             document.getElementById('demo-controller').classList.remove('hidden');
 
             const userName = document.getElementById('input-name').value.trim() || '許願傳人';
-            const rolesPool = ['許願', '老朝奉', '藥不然', '鄭教授', '方震', '黃煙煙', '路人專家甲', '路人專家乙'].sort(() => Math.random() - 0.5);
+            const rolesPool = ['許願', '老朝奉', '藥不然', '鄭國渠', '方震', '黃煙煙', '木戶加奈', '姬雲浮'].sort(() => Math.random() - 0.5);
 
             state.players = rolesPool.map((role, i) => ({
                 id: i === 0 ? 'user_player' : `bot_${i}`,
                 name: i === 0 ? userName : `電腦專家 (AI ${i})`,
-                role: role, isBot: i !== 0, isMuted: false
+                role: role, isBot: i !== 0, isMuted: false, totalVotesRemaining: 6
             }));
 
-            let trueFalseArr = [true, true, true, true, true, true, false, false, false, false, false, false].sort(() => Math.random() - 0.5);
-            state.artifacts = animalNames.map((name, idx) => ({
-                id: idx + 1, name: name, isReal: trueFalseArr[idx], color: animalColors[name].code,
-                votes: 0, protected: false, altered: false, shielded: false
-            }));
+            state.artifacts = generateBalancedArtifacts();
 
             state.myPlayerId = 'user_player';
             state.myRole = state.players[0].role;
             state.phase = 'NIGHT';
             state.round = 1;
             state.myVotesThisRound = {};
+            state.totalVotesRemaining = 6;
             state.historicalClueLogs = [];
             state.historicalLedgers = [];
 
@@ -785,20 +817,17 @@
         }
 
         function executeGrandNightSettlement() {
-            // 1. 初始化狀態
             state.artifacts.forEach(a => { a.protected = false; a.altered = false; a.shielded = false; });
             state.players.forEach(p => p.isMuted = false);
 
-            // 2. 先結算鄭教授禁言
             state.nightSequence.forEach(p => {
                 const act = state.sequenceActions[p.id];
-                if (act && p.role === '鄭教授' && act.playerId) {
+                if (act && p.role === '鄭國渠' && act.playerId) {
                     const targetPlayer = state.players.find(x => x.id === act.playerId);
                     if (targetPlayer) targetPlayer.isMuted = true;
                 }
             });
 
-            // 3. 結算古董混淆特效 (被禁言則無效)
             state.nightSequence.forEach(p => {
                 if (p.isMuted) return;
                 const act = state.sequenceActions[p.id];
@@ -806,14 +835,13 @@
                 
                 const art = state.artifacts.find(a => a.id === act.artifactId);
                 if (p.role === '方震') art.protected = true;
-                if (p.role === '老朝奉') art.shielded = true;
+                if (p.role === '老朝奉' && !art.protected) art.shielded = true; // 需看順位，這裡簡化為直接生效但受方震保護
                 if (p.role === '藥不然' && !art.protected) art.altered = true;
             });
 
-            // 4. 構建公共歷局卷宗 (僅顯示行動順序，不顯示目標)
             const publicLogs = [];
             state.nightSequence.forEach((p, index) => {
-                publicLogs.push(`⏱️ [行動順位 ${index + 1}] 大師 [${p.name}] 結束了暗夜行動。`);
+                publicLogs.push(`⏱️ [順位 ${index + 1}] 大師 [${p.name}] 結束了暗夜行動。`);
             });
             state.historicalClueLogs.push({ round: state.round, logs: publicLogs });
 
@@ -826,9 +854,6 @@
             });
         }
 
-        // ----------------------------------------------
-        // ⚖️ 投票決議
-        // ----------------------------------------------
         function proceedToVotePhase() {
             if (isMultiplayer && !isHost) return; 
             state.phase = 'VOTE';
@@ -849,7 +874,12 @@
             let currentVotesForThisArt = state.myVotesThisRound[id] || 0;
 
             if (delta > 0) {
-                state.myVotesThisRound[id] = currentVotesForThisArt + 1;
+                if (spentThisRound < state.totalVotesRemaining) {
+                    state.myVotesThisRound[id] = currentVotesForThisArt + 1;
+                } else {
+                    showToast(`餘額不足！ (僅剩 ${state.totalVotesRemaining - spentThisRound} 票)`);
+                    return;
+                }
             } else if (delta < 0) {
                 if (currentVotesForThisArt > 0) {
                     state.myVotesThisRound[id] = currentVotesForThisArt - 1;
@@ -863,6 +893,7 @@
 
         function submitVotes() {
             let spentThisRound = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
+            if (spentThisRound > state.totalVotesRemaining) return showToast("超額投出！");
 
             if (isMultiplayer && !isHost) {
                 hostConn.send({ type: 'VOTE_ACTION', votes: state.myVotesThisRound });
@@ -899,18 +930,21 @@
                         spentThisRound += count;
                         const art = state.artifacts.find(a => a.id == artId);
                         art.votes += count;
+                        player.totalVotesRemaining -= count; 
                         state.roundLedger.push({ playerName: player.name, artifactName: art.name, votesCast: count, isUser: vr.id === state.myPlayerId });
                     }
                 }
                 if (spentThisRound === 0) {
                     state.roundLedger.push({ playerName: player.name, artifactName: "無 (棄票保留)", votesCast: 0, isUser: vr.id === state.myPlayerId });
                 }
-
+                if (vr.id === state.myPlayerId) state.totalVotesRemaining = player.totalVotesRemaining;
             });
 
             state.players.forEach(p => {
                 if (!p.isBot) return;
-                let toCast = Math.floor(Math.random() * 3); // Bot random vote count
+                let toCast = state.round === 3 ? p.totalVotesRemaining : Math.floor(Math.random() * (p.totalVotesRemaining + 1));
+                if (toCast > 3 && state.round !== 3) toCast = 2; 
+                p.totalVotesRemaining -= toCast;
 
                 if (toCast > 0) {
                     const activeArts = getActiveArtifactsForCurrentRound();
@@ -935,6 +969,7 @@
 
         function executeDemoVoteSettlement() {
             let spentThisRound = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
+            state.totalVotesRemaining -= spentThisRound;
             state.roundLedger = [];
 
             for (let id in state.myVotesThisRound) {
@@ -951,7 +986,9 @@
 
             state.players.forEach(p => {
                 if (!p.isBot) return;
-                let toCast = Math.floor(Math.random() * 3);
+                let toCast = state.round === 3 ? p.totalVotesRemaining : Math.floor(Math.random() * (p.totalVotesRemaining + 1));
+                if (toCast > 3 && state.round !== 3) toCast = 2;
+                p.totalVotesRemaining -= toCast;
 
                 if (toCast > 0) {
                     const activeArts = getActiveArtifactsForCurrentRound();
@@ -983,18 +1020,114 @@
                     startNightRound();
                 });
             } else {
-                if(isHost) broadcastTransition("🏁", "終局揭盅", "三輪大戰結束，清點真品得票...");
-                triggerPhaseTransition("🏁", "終局揭盅", "三輪大戰結束，清點真品得票...", () => {
-                    state.phase = 'END';
-                    if(isHost) broadcastState();
+                if(isHost) broadcastTransition("🕵️", "終局揭盅", "三輪大戰結束，進入最後的鑒人指控！");
+                triggerPhaseTransition("🕵️", "終局揭盅", "三輪大戰結束，進入最後的鑒人指控！", () => {
+                    state.phase = 'FINAL_VOTE';
+                    if (isHost) {
+                        state.finalVotesReceived = [];
+                        state.finalVotesResult = {};
+                        state.finalAssassinations = { laocaofeng: null, yaoburan: null };
+                        broadcastState();
+                    }
                     initGameUI();
                 });
             }
         }
 
-        // ----------------------------------------------
-        // 🎨 UI 渲染與易讀性大幅優化核心
-        // ----------------------------------------------
+        function submitFinalVote() {
+            if (!finalSelectionId) return showToast("請選擇一個目標！");
+            
+            if (isMultiplayer && !isHost) {
+                hostConn.send({ type: 'FINAL_ACTION', choice: finalSelectionId, role: state.myRole });
+                document.getElementById('panel-final-vote').classList.add('hidden');
+                showToast("已送出指認，等待結算...");
+            } else {
+                if (isMultiplayer && isHost) {
+                    handleMultiplayerFinalAction(state.myPlayerId, finalSelectionId, state.myRole);
+                    document.getElementById('panel-final-vote').classList.add('hidden');
+                    showToast("已送出指認，等待結算...");
+                } else {
+                    executeDemoFinalSettlement();
+                }
+            }
+        }
+
+        function handleMultiplayerFinalAction(playerId, targetId, playerRole) {
+            state.finalVotesReceived.push({ id: playerId });
+            
+            if (playerRole === '老朝奉') state.finalAssassinations.laocaofeng = targetId;
+            else if (playerRole === '藥不然') state.finalAssassinations.yaoburan = targetId;
+            else {
+                if(!state.finalVotesResult[targetId]) state.finalVotesResult[targetId] = 0;
+                state.finalVotesResult[targetId]++;
+            }
+
+            const humanCount = state.players.filter(p => !p.isBot).length;
+            if (state.finalVotesReceived.length >= humanCount) {
+                executeMultiplayerFinalSettlement();
+            }
+        }
+
+        function executeMultiplayerFinalSettlement() {
+            // Bots vote for Laocaofeng
+            state.players.forEach(p => {
+                if (!p.isBot) return;
+                
+                let targetId = null;
+                const others = state.players.filter(x => x.id !== p.id);
+                targetId = others[Math.floor(Math.random() * others.length)].id;
+
+                if (p.role === '老朝奉') state.finalAssassinations.laocaofeng = targetId;
+                else if (p.role === '藥不然') state.finalAssassinations.yaoburan = targetId;
+                else {
+                    if(!state.finalVotesResult[targetId]) state.finalVotesResult[targetId] = 0;
+                    state.finalVotesResult[targetId]++;
+                }
+            });
+
+            broadcastTransition("🏁", "遊戲結束", "清點所有結果...");
+            triggerPhaseTransition("🏁", "遊戲結束", "清點所有結果...", () => {
+                state.phase = 'END';
+                broadcastState();
+                initGameUI();
+            });
+        }
+
+        function executeDemoFinalSettlement() {
+            if (state.myRole === '老朝奉') state.finalAssassinations.laocaofeng = finalSelectionId;
+            else if (state.myRole === '藥不然') state.finalAssassinations.yaoburan = finalSelectionId;
+            else {
+                state.finalVotesResult[finalSelectionId] = 1;
+            }
+
+            state.players.forEach(p => {
+                if (!p.isBot) return;
+                
+                let targetId = null;
+                const others = state.players.filter(x => x.id !== p.id);
+                
+                // Bot AI 增加一點點機率投中正確目標
+                if (p.role === '老朝奉' && Math.random() < 0.2) targetId = state.players.find(x => x.role === '許願')?.id;
+                else if (p.role === '藥不然' && Math.random() < 0.2) targetId = state.players.find(x => x.role === '方震')?.id;
+                else if (['許願', '方震', '黃煙煙', '木戶加奈', '姬雲浮'].includes(p.role) && Math.random() < 0.3) {
+                    targetId = state.players.find(x => x.role === '老朝奉')?.id;
+                } 
+                if (!targetId) targetId = others[Math.floor(Math.random() * others.length)].id;
+
+                if (p.role === '老朝奉') state.finalAssassinations.laocaofeng = targetId;
+                else if (p.role === '藥不然') state.finalAssassinations.yaoburan = targetId;
+                else {
+                    if(!state.finalVotesResult[targetId]) state.finalVotesResult[targetId] = 0;
+                    state.finalVotesResult[targetId]++;
+                }
+            });
+
+            triggerPhaseTransition("🏁", "遊戲結束", "清點所有結果...", () => {
+                state.phase = 'END';
+                initGameUI();
+            });
+        }
+
         function getActiveArtifactsForCurrentRound() {
             if (state.round === 1) return state.artifacts.slice(0, 4);
             if (state.round === 2) return state.artifacts.slice(4, 8);
@@ -1012,7 +1145,7 @@
                 let borderClass = 'border-zinc-800 bg-zinc-900/60 text-gray-300';
                 let stateBadges = '';
                 let labelText = '';
-                let myCheckBadge = ''; // 新增：自己的查驗結果標籤
+                let myCheckBadge = ''; 
                 let opacityClass = isActive ? '' : 'artifact-disabled';
 
                 const displayName = a.name;
@@ -1028,7 +1161,6 @@
                     borderClass = 'border-amber-400 bg-amber-950/40 text-amber-300 font-extrabold gold-glow shadow-[0_0_15px_rgba(217,119,6,0.5)]';
                 }
 
-                // 處理在生肖卡片上直接顯示查驗結果
                 if ((state.phase === 'DAY' || state.phase === 'VOTE' || state.phase === 'ROUND_SETTLEMENT') && !state.godMode) {
                     const myAction = state.sequenceActions[state.myPlayerId];
                     if (myAction && myAction.artifactId === a.id) {
@@ -1065,7 +1197,6 @@
                     `;
                 }
 
-                // 僅在上帝視角顯示印記，一般遊戲中隱藏
                 if (state.godMode) {
                     if (a.protected) stateBadges += '<span class="text-[10px] bg-emerald-950 text-emerald-400 border border-emerald-800/50 px-1.5 py-0.5 rounded shadow-sm">護</span>';
                     if (a.altered) stateBadges += '<span class="text-[10px] bg-purple-950 text-purple-400 border border-purple-800/50 px-1.5 py-0.5 rounded shadow-sm">調</span>';
@@ -1110,6 +1241,14 @@
                     cardStyle = 'bg-purple-950/50 text-purple-200 border-purple-500 font-extrabold gold-glow shadow-[0_0_15px_rgba(168,85,247,0.4)]';
                 }
 
+                if (state.phase === 'FINAL_VOTE' && finalSelectionId === p.id) {
+                    if (state.myRole === '老朝奉' || state.myRole === '藥不然') {
+                        cardStyle = 'bg-red-950/50 text-red-200 border-red-500 font-extrabold player-assassinate-selected';
+                    } else {
+                        cardStyle = 'bg-blue-950/50 text-blue-200 border-blue-500 font-extrabold player-hunt-selected';
+                    }
+                }
+
                 const ringStyle = isCurrentActing ? 'ring-2 ring-amber-500/60 shadow-[0_0_15px_rgba(217,119,6,0.3)]' : 'border';
                 
                 const nameDisplay = p.name;
@@ -1132,10 +1271,12 @@
 
         function initGameUI() {
             if(!state.myRole) return;
-            const roleInfo = roleDatabase[state.myRole] || roleDatabase['路人專家甲'];
+            const roleInfo = roleDatabase[state.myRole] || roleDatabase['木戶加奈'];
             document.getElementById('my-role').innerText = roleInfo.roleName;
             document.getElementById('my-camp-desc').innerText = `宗師特技：${roleInfo.skillDesc}`;
-            document.getElementById('round-display-header').innerText = `第 ${state.round} / 3 輪對弈`;
+            document.getElementById('round-display-header').innerText = state.phase === 'FINAL_VOTE' || state.phase === 'END' ? '終局結算' : `第 ${state.round} / 3 輪對弈`;
+            
+            document.getElementById('my-total-votes').innerText = state.totalVotesRemaining;
 
             const badge = document.getElementById('role-badge');
             badge.innerText = roleInfo.camp === 'GOOD' ? '好人陣營' : '邪派陣營';
@@ -1144,14 +1285,10 @@
             document.getElementById('teammates-box').classList.toggle('hidden', state.myTeammates.length === 0);
             document.getElementById('my-teammates').innerText = state.myTeammates.join(', ');
 
-            ['step-night', 'step-day', 'step-vote', 'step-end'].forEach(id => document.getElementById(id).className = 'py-1.5 rounded-lg text-gray-500 font-medium');
+            ['step-night', 'step-day', 'step-vote', 'step-final', 'step-end'].forEach(id => document.getElementById(id).className = 'py-1.5 rounded-lg text-gray-500 font-medium');
 
-            document.getElementById('panel-night').classList.add('hidden');
-            document.getElementById('night-blindfold-mask').classList.add('hidden');
-            document.getElementById('panel-day').classList.add('hidden');
-            document.getElementById('panel-vote').classList.add('hidden');
-            document.getElementById('panel-round-settlement').classList.add('hidden');
-            document.getElementById('panel-end').classList.add('hidden');
+            ['panel-night', 'night-blindfold-mask', 'panel-day', 'panel-vote', 'panel-round-settlement', 'panel-final-vote', 'panel-end'].forEach(id => document.getElementById(id).classList.add('hidden'));
+            
             document.getElementById('grid-parent').classList.remove('hidden');
             document.getElementById('players-parent').classList.remove('hidden');
 
@@ -1170,17 +1307,36 @@
             } else if (state.phase === 'DAY') {
                 document.getElementById('step-day').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60 shadow-inner';
                 document.getElementById('panel-day').classList.remove('hidden');
-				document.getElementById('solo-chat-box').classList.remove('hidden');
+                document.getElementById('solo-chat-box').classList.remove('hidden');
             } else if (state.phase === 'VOTE') {
                 document.getElementById('step-vote').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60 shadow-inner';
                 document.getElementById('panel-vote').classList.remove('hidden');
-                document.getElementById('vote-count').innerText = `0`;
+                let newSpent = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0) || 0;
+                document.getElementById('vote-count').innerText = `${newSpent}`;
             } else if (state.phase === 'ROUND_SETTLEMENT') {
                 document.getElementById('step-vote').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60 shadow-inner';
                 document.getElementById('panel-round-settlement').classList.remove('hidden');
                 document.getElementById('grid-parent').classList.add('hidden');
                 document.getElementById('players-parent').classList.add('hidden');
                 renderRoundSettlementScreen();
+            } else if (state.phase === 'FINAL_VOTE') {
+                document.getElementById('step-final').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60 shadow-inner';
+                document.getElementById('panel-final-vote').classList.remove('hidden');
+                document.getElementById('grid-parent').classList.add('hidden'); 
+                
+                const fTitle = document.getElementById('final-vote-title');
+                const fDesc = document.getElementById('final-vote-desc');
+                
+                if (state.myRole === '老朝奉') {
+                    fTitle.innerText = "🔪 終局暗殺：揪出許願！";
+                    fDesc.innerText = "您是邪派首領。只要能成功指認出誰是「許願」，即可無視寶物分數，直接逆轉獲勝！";
+                } else if (state.myRole === '藥不然') {
+                    fTitle.innerText = "🔪 終局盲狙：揪出方震！";
+                    fDesc.innerText = "您是刺客大師。只要能成功指認出誰是「方震」，即可癱瘓好人領袖，直接逆轉獲勝！";
+                } else {
+                    fTitle.innerText = "🕵️ 終局指認：捉拿老朝奉！";
+                    fDesc.innerText = "三輪鑒寶已結束！請根據蛛絲馬跡，投票指控誰是幕後黑手「老朝奉」。若好人成功抓捕，即可逆轉獲勝！";
+                }
             } else if (state.phase === 'END') {
                 document.getElementById('step-end').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60 shadow-inner';
                 document.getElementById('panel-end').classList.remove('hidden');
@@ -1196,9 +1352,10 @@
 
         function renderRoundSettlementScreen() {
             document.getElementById('settlement-round-title').innerText = `第 ${state.round} 輪 鑑定公投大起底`;
+            document.getElementById('settlement-remaining-votes').innerText = state.totalVotesRemaining;
             
             const btnNext = document.getElementById('btn-next-round');
-            btnNext.innerText = state.round < 3 ? `進入第 ${state.round + 1} 輪暗夜` : `進行最終結局大揭盅`;
+            btnNext.innerText = state.round < 3 ? `進入第 ${state.round + 1} 輪暗夜 (餘 ${state.totalVotesRemaining} 票)` : `進行最終結局大揭盅`;
             btnNext.classList.remove('pointer-events-none', 'opacity-50');
 
             const ledgerContainer = document.getElementById('round-settlement-ledger');
@@ -1218,15 +1375,72 @@
         function renderEndGameScreen() {
             let correctVotes = 0;
             state.artifacts.forEach(a => { if (a.isReal) correctVotes += a.votes; });
-            const win = correctVotes >= 6; // 好人需要投對6個真品
+            const artifactWin = correctVotes >= 6; 
+
+            // 1. 檢查老朝奉暗殺是否成功
+            let laocaofengKilledXuyuan = false;
+            let actualXuyuan = state.players.find(p => p.role === '許願');
+            if (actualXuyuan && state.finalAssassinations.laocaofeng === actualXuyuan.id) {
+                laocaofengKilledXuyuan = true;
+            }
+
+            // 2. 檢查藥不然盲狙是否成功
+            let yaoburanKilledFangzhen = false;
+            let actualFangzhen = state.players.find(p => p.role === '方震');
+            if (actualFangzhen && state.finalAssassinations.yaoburan === actualFangzhen.id) {
+                yaoburanKilledFangzhen = true;
+            }
+
+            // 3. 檢查好人是否捉拿老朝奉成功
+            let goodGuysCaughtLaocaofeng = false;
+            let actualLaocaofeng = state.players.find(p => p.role === '老朝奉');
+            if (actualLaocaofeng) {
+                let maxVotes = 0;
+                let suspectId = null;
+                for(let id in state.finalVotesResult) {
+                    if (state.finalVotesResult[id] > maxVotes) {
+                        maxVotes = state.finalVotesResult[id];
+                        suspectId = id;
+                    }
+                }
+                if (suspectId === actualLaocaofeng.id) goodGuysCaughtLaocaofeng = true;
+            }
+
+            let win = false;
+            let winReason = "";
+
+            const assnDesc = document.getElementById('end-assassin-desc');
+            const voteDesc = document.getElementById('end-vote-desc');
+            assnDesc.classList.remove('hidden');
+            voteDesc.classList.remove('hidden');
+
+            if (laocaofengKilledXuyuan || yaoburanKilledFangzhen) {
+                win = false; // 壞人贏
+                winReason = "暗殺成功，隻手遮天！";
+                
+                let msg = "";
+                if (laocaofengKilledXuyuan) msg += `🔪 震驚！老朝奉精準暗殺了「許願」(${actualXuyuan.name})！`;
+                if (yaoburanKilledFangzhen) msg += (msg?"<br>":"") + `🔪 震驚！藥不然成功盲狙了「方震」(${actualFangzhen.name})！`;
+                
+                assnDesc.innerHTML = `<span class="text-red-400">${msg} 邪派陣營直接逆轉戰局！</span>`;
+                voteDesc.innerHTML = `<span class="text-gray-500 line-through">公投與鑒寶分數已無關緊要。</span>`;
+            } else if (goodGuysCaughtLaocaofeng) {
+                win = true; // 好人贏
+                winReason = "擒賊擒王，大獲全勝！";
+                assnDesc.innerHTML = `<span class="text-emerald-400">🛡️ 邪派暗殺失敗！許願與方震成功隱藏身分。</span>`;
+                voteDesc.innerHTML = `<span class="text-amber-400">🚨 公投捉拿成功！大師們成功票死「老朝奉」(${actualLaocaofeng.name})，無須鑒寶分數即獲勝！</span>`;
+            } else {
+                // 進入算分階段
+                win = artifactWin;
+                winReason = win ? "尋回真跡，護寶成功！" : "贗品橫行，打眼落敗！";
+                assnDesc.innerHTML = `<span class="text-emerald-400">🛡️ 邪派暗殺失敗，且好人亦未能找出老朝奉。進入鑒寶算分階段！</span>`;
+                voteDesc.innerHTML = `<span class="${win?'text-emerald-400':'text-red-400'}">📊 鑒寶結果：好人總共投給真品 ${correctVotes} 票 (達標門檻: 6票)。</span>`;
+            }
 
             const title = document.getElementById('end-winner-title');
-            title.innerText = win ? '🟢 許願陣營 大獲全勝！' : '👹 老朝奉陣營 隻手遮天！';
-            title.className = win ? 'text-2xl font-extrabold text-emerald-400 font-serif-china drop-shadow-md' : 'text-2xl font-extrabold text-red-500 font-serif-china drop-shadow-md';
-            
-            document.getElementById('end-score-desc').innerText = win ? 
-                `尋回真跡！好人大師們合計投給真品：${correctVotes} 票 (達標 6 票)！` :
-                `護寶失敗！好人大師們合計僅投給真品：${correctVotes} 票 (未達 6 票)。贗品橫行！`;
+            title.innerText = win ? `🟢 許願陣營獲勝：${winReason}` : `👹 邪派陣營獲勝：${winReason}`;
+            title.className = win ? 'text-lg sm:text-xl font-extrabold text-emerald-400 font-serif-china drop-shadow-md' : 'text-lg sm:text-xl font-extrabold text-red-500 font-serif-china drop-shadow-md';
+            document.getElementById('end-winner-icon').innerText = win ? '🏆' : '☠️';
 
             const summaryHtml = state.historicalLedgers.map((hl) => {
                 let realVotes = 0;
@@ -1272,7 +1486,6 @@
             const chatBox = document.getElementById('solo-chat-messages');
             chatBox.innerHTML = '';
             
-            // 1. 生成客戶端私人的昨夜查驗密報 (不會被同步給其他人)
             const me = state.players.find(p => p.id === state.myPlayerId);
             if (me) {
                 if (me.isMuted) {
@@ -1296,9 +1509,9 @@
                         }
                         
                         let msg = `🔍 對 [${art.name}] 的查驗結果：【${resultStr}】`;
-                        if (me.role === '黃煙煙' && act.playerId) {
+                        if (me.role === '方震' && act.playerId) {
                             const target = state.players.find(p => p.id === act.playerId);
-                            const isBad = ['老朝奉', '藥不然', '鄭教授'].includes(target.role);
+                            const isBad = ['老朝奉', '藥不然', '鄭國渠'].includes(target.role);
                             msg += `<br>👤 對 [${target.name}] 的陣營查驗：【${isBad ? '👹 邪派' : '🟢 好人'}】`;
                         }
                         chatBox.innerHTML += `
@@ -1311,13 +1524,9 @@
                 }
             }
 
-            // 2. 生成其他專家的對話 (AI 智慧發言)
             state.players.forEach(p => {
                 if (p.id === state.myPlayerId) return;
-				
 				if (!p.isBot) return;
-                
-                // 被禁言的玩家直接不發言 (隱藏狀態，讓玩家自己推理誰沒說話)
                 if (p.isMuted && !state.godMode) return; 
                 
                 let msg = "";
@@ -1328,7 +1537,6 @@
                 const roleCamp = roleDatabase[p.role]?.camp || 'GOOD';
 
                 if (roleCamp === 'GOOD') {
-                    // 好人根據實際行動發言
                     if (act && act.artifactId) {
                         const art = state.artifacts.find(a => a.id === act.artifactId);
                         const seeReal = art.shielded ? null : (art.altered ? !art.isReal : art.isReal);
@@ -1343,12 +1551,11 @@
                         msg = `諸位打眼是小，丟失國寶是大，別瞎跟票！`;
                     }
                 } else {
-                    // 壞人故意撒謊或帶風向
                     if (p.role === '老朝奉') {
                         msg = `老夫看那 [${randomArt.name}] 釉色不對，做得倒挺真，大家不妨考慮把假票投給它。`;
                     } else if (p.role === '藥不然') {
                         msg = `別聽信別人的片面之詞，昨晚肯定有人動了手腳，我看 [${randomArt.name}] 才是真跡。`;
-                    } else if (p.role === '鄭教授') {
+                    } else if (p.role === '鄭國渠') {
                         msg = `學術不容造假！我看場上有幾個自稱好人的，滿嘴胡言亂語，大家別信。`;
                     } else {
                         msg = `這局勢太亂了，真真假假豈是能輕易看透的？`;
@@ -1364,9 +1571,6 @@
             });
         }
 
-        // ----------------------------------------------
-        // 互動點擊邏輯
-        // ----------------------------------------------
         function onArtifactClicked(id) {
             if (state.phase === 'NIGHT') {
                 const activePlayer = state.nightSequence[state.currentSequenceIndex];
@@ -1374,7 +1578,7 @@
                     if (!getActiveArtifactsForCurrentRound().some(a => a.id === id)) return showToast('非當輪解鎖古董，無法查驗！');
                     nightSelections.artifactId = id;
                     updateNightSelectionUI();
-                    initGameUI(); // Trigger re-render for glow effect
+                    initGameUI(); 
                 }
             } else if (state.phase === 'VOTE') {
                 if (!getActiveArtifactsForCurrentRound().some(a => a.id === id)) return showToast('非當輪投票生肖！');
@@ -1391,19 +1595,22 @@
                         if (pId === state.myPlayerId) return showToast('不可選擇自己為特技目標！');
                         nightSelections.playerId = pId;
                         updateNightSelectionUI();
-                        initGameUI(); // Trigger re-render for glow effect
+                        initGameUI(); 
                     }
                 }
+            } else if (state.phase === 'FINAL_VOTE') {
+                if (pId === state.myPlayerId) return showToast('不可指認自己！');
+                finalSelectionId = pId;
+                const target = state.players.find(x => x.id === pId);
+                document.getElementById('final-target-summary').innerHTML = `鎖定目標：<span class="${state.myRole === '老朝奉' || state.myRole === '藥不然' ? 'text-red-400' : 'text-blue-400'}">[${target.name}]</span>`;
+                initGameUI();
             }
         }
 
-        // ----------------------------------------------
-        // 離線 AI 系統對話框
-        // ----------------------------------------------
         function triggerLocalAIStrategy() {
             const activeArtsText = getActiveArtifactsForCurrentRound().map(a => a.name).join('、');
             const localDeductions = [
-                `【局中大勢秘判】昨夜風影搖晃，展位「${activeArtsText}」上鏽跡有新痕，恐已被邪派動了底。你身承【${state.myRole}】絕活，切記提防鄭教授與藥不然。此輪若無萬全把握，不妨暫時保留選票。`,
+                `【局中大勢秘判】昨夜風影搖晃，展位「${activeArtsText}」上鏽跡有新痕，恐已被邪派動了底。你身承【${state.myRole}】絕活，切記提防鄭國渠與藥不然。此輪若無萬全把握，不妨暫時保留選票。`,
                 `【密室金科耳語】場上大師議論風向有古怪，有人在刻意替劣貨潑釉。依昨夜查驗日誌來看，或許早有人施展了隻手遮天。此時盲投風高浪急，好人一脈需緊盯公投帳冊的動向，方能破局！`
             ];
             showAIModal("🔮 掌眼大師 • 局勢秘判", localDeductions[Math.floor(Math.random() * localDeductions.length)]);
@@ -1423,7 +1630,7 @@
         function submitLocalInterrogation() {
             const botId = document.getElementById('interrogate-bot-select').value;
             const targetBot = state.players.find(p => p.id === botId);
-            const isBad = ['老朝奉', '藥不然', '鄭教授'].includes(targetBot.role);
+            const isBad = ['老朝奉', '藥不然', '鄭國渠'].includes(targetBot.role);
 
             const goodReplies = ["掌眼的事，黑白分明，許某行得正坐得直，昨夜我走得光明磊落！", "莫要血口噴人！我向來只認真跡，我的票只投真品！"];
             const badReplies = ["呵呵，江湖水深，真真假假豈是你能看透的？少在展台前潑髒水！", "大師莫急，打眼是常有的事。倒是你昨晚鬼鬼祟祟，賊喊捉賊吧？"];
@@ -1437,9 +1644,6 @@
             `;
         }
 
-        // ----------------------------------------------
-        // 歷局卷宗管理
-        // ----------------------------------------------
         function toggleArchives() {
             const content = document.getElementById('archives-content');
             const icon = document.getElementById('archive-toggle-icon');
@@ -1458,7 +1662,7 @@
             } else {
                 cluesContainer.innerHTML = state.historicalClueLogs.map(item => `
                     <li class="border-b border-zinc-800 pb-3 mb-3">
-                        <span class="text-amber-500 font-bold text-sm block mb-1.5">[第 ${item.round} 輪暗夜查驗順序]</span>
+                        <span class="text-amber-500 font-bold text-sm block mb-1.5">[第 ${item.round} 輪暗夜行動順序]</span>
                         ${item.logs.map(log => `<span class="text-gray-300 block pl-3 text-sm border-l-2 border-zinc-700 mb-1 leading-relaxed">${log}</span>`).join('')}
                     </li>
                 `).join('');
@@ -1477,9 +1681,6 @@
             }
         }
 
-        // ----------------------------------------------
-        // 實用工具函數
-        // ----------------------------------------------
         function toggleGodMode() {
             state.godMode = !state.godMode;
             document.getElementById('btn-god-mode').innerText = state.godMode ? '👁️ 關閉天眼 (還原暗流)' : '👁️ 開啟天眼 (顯示真實身份)';
