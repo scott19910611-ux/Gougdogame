@@ -201,7 +201,7 @@
                         <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> 大師議論大會中...
                     </span>
                     <button id="btn-proceed-vote" onclick="proceedToVotePhase()" class="bg-amber-800/40 hover:bg-amber-700/50 text-amber-300 border border-amber-700/50 text-xs px-4 py-2 rounded-lg transition font-bold shadow-md active:scale-95">
-                        ⚖️ 房主發起投票決議
+                        ⚖️ 發起投票決議
                     </button>
                 </div>
 
@@ -225,11 +225,11 @@
             <!-- 投票區 -->
             <div id="panel-vote" class="hidden space-y-3">
                 <div class="bg-zinc-950 border border-zinc-800 p-4 rounded-xl text-xs text-center text-gray-300 leading-relaxed shadow-inner">
-                    <strong class="text-amber-500 text-sm mb-1 block">⚖️ 真品鑑定決議 (6 票跨輪分配)</strong>
-                    每人共有 <strong>6 票</strong> 可供 3 輪自由分配（本輪可不投，也可梭哈）。<br>請點選下方生肖卡片的 <strong>+</strong> 與 <strong>-</strong> 調配。
+                    <strong class="text-amber-500 text-sm mb-1 block">⚖️ 真品鑑定決議</strong>
+                    本輪可為展出的生肖古董進行投票。<br>請點選下方生肖卡片的 <strong>+</strong> 與 <strong>-</strong> 調配。
                 </div>
                 <div class="flex justify-between items-center bg-zinc-900 p-3 rounded-xl border border-zinc-800 shadow-sm">
-                    <span class="text-sm text-gray-300 font-medium">本輪預配：<strong class="text-amber-500 text-lg ml-1" id="vote-count">0 / 6</strong> 票</span>
+                    <span class="text-sm text-gray-300 font-medium">本輪預配：<strong class="text-amber-500 text-lg ml-1" id="vote-count">0</strong> 票</span>
                     <button onclick="submitVotes()" class="bg-amber-800/50 hover:bg-amber-700/60 text-amber-200 border border-amber-600/50 font-bold px-5 py-2 rounded-lg transition text-sm shadow-md active:scale-95">
                         送交鑑定決議
                     </button>
@@ -243,9 +243,6 @@
                     <p class="text-xs text-gray-400">所有大師本輪投出的明細票數，供您進行身分推理</p>
                 </div>
                 <div class="bg-zinc-950 border border-zinc-800 rounded-xl p-3 space-y-2 shadow-inner" id="round-settlement-ledger" class="max-h-56 overflow-y-auto gold-scrollbar">
-                </div>
-                <div class="bg-zinc-900 border border-zinc-800 p-3 rounded-xl text-center text-sm shadow-sm">
-                    <p class="text-zinc-400 font-medium">您的剩餘總票數：<span class="text-amber-400 font-bold text-lg font-mono ml-1" id="settlement-remaining-votes">6</span> 票</p>
                 </div>
                 <button id="btn-next-round" onclick="advanceToNextRound()" class="w-full bg-gradient-to-r from-amber-900/40 to-amber-800/40 hover:from-amber-800/60 hover:to-amber-700/60 border border-amber-700/50 text-amber-300 font-bold py-3.5 rounded-xl text-sm transition shadow-lg active:scale-95">
                     下一個回合
@@ -394,7 +391,7 @@
         let state = {
             mode: 'demo', godMode: false, round: 1, phase: 'LOBBY', roomCode: '',
             players: [], myPlayerId: 'user_player', myRole: '', myTeammates: [], artifacts: [],
-            actionLog: [], myVotesThisRound: {}, totalVotesRemaining: 6, roundLedger: [],
+            actionLog: [], myVotesThisRound: {}, roundLedger: [],
             currentSequenceIndex: 0, nightSequence: [], sequenceActions: {},
             historicalClueLogs: [], historicalLedgers: [], votesReceived: []
         };
@@ -429,7 +426,7 @@
             isHost = true;
             state.mode = 'webrtc';
             state.myPlayerId = 'host_player';
-            state.players = [{ id: state.myPlayerId, name: userName, role: '', isBot: false, isMuted: false, totalVotesRemaining: 6, isHost: true }];
+            state.players = [{ id: state.myPlayerId, name: userName, role: '', isBot: false, isMuted: false, isHost: true }];
             
             // 隱藏天眼輔助
             document.getElementById('god-mode-wrapper').classList.add('hidden');
@@ -534,7 +531,7 @@
             if (!isHost) return;
             if (data.type === 'JOIN') {
                 if (state.phase !== 'LOBBY') return;
-                state.players.push({ id: peerId, name: data.name, role: '', isBot: false, isMuted: false, totalVotesRemaining: 6, isHost: false });
+                state.players.push({ id: peerId, name: data.name, role: '', isBot: false, isMuted: false, isHost: false });
                 updateLobbyUI();
                 broadcastState();
                 showToast(`${data.name} 踏入密室`);
@@ -559,7 +556,6 @@
                 const me = state.players.find(p => p.id === state.myPlayerId);
                 if (me) {
                     state.myRole = me.role;
-                    state.totalVotesRemaining = me.totalVotesRemaining;
                 }
                 
                 const userCamp = roleDatabase[state.myRole]?.camp;
@@ -614,7 +610,7 @@
             
             while (state.players.length < 8) {
                 const botId = `bot_${state.players.length}`;
-                state.players.push({ id: botId, name: `電腦專家 AI-${state.players.length}`, role: '', isBot: true, isMuted: false, totalVotesRemaining: 6, isHost: false });
+                state.players.push({ id: botId, name: `電腦專家 AI-${state.players.length}`, role: '', isBot: true, isMuted: false, isHost: false });
             }
 
             const rolesPool = ['許願', '老朝奉', '藥不然', '鄭教授', '方震', '黃煙煙', '路人專家甲', '路人專家乙'].sort(() => Math.random() - 0.5);
@@ -662,7 +658,7 @@
             state.players = rolesPool.map((role, i) => ({
                 id: i === 0 ? 'user_player' : `bot_${i}`,
                 name: i === 0 ? userName : `電腦專家 (AI ${i})`,
-                role: role, isBot: i !== 0, isMuted: false, totalVotesRemaining: 6
+                role: role, isBot: i !== 0, isMuted: false
             }));
 
             let trueFalseArr = [true, true, true, true, true, true, false, false, false, false, false, false].sort(() => Math.random() - 0.5);
@@ -676,7 +672,6 @@
             state.phase = 'NIGHT';
             state.round = 1;
             state.myVotesThisRound = {};
-            state.totalVotesRemaining = 6;
             state.historicalClueLogs = [];
             state.historicalLedgers = [];
 
@@ -845,38 +840,29 @@
         }
 
         window.changeVote = function(id, delta) {
-			if (state.phase !== 'VOTE') return;
-			
-			if (!state.myVotesThisRound) state.myVotesThisRound = {};
-			
-			// 獲取目前總投入票數
-			let currentVotesArr = Object.values(state.myVotesThisRound);
-			let spentThisRound = currentVotesArr.reduce((a, b) => a + b, 0);
-			let currentVotesForThisArt = state.myVotesThisRound[id] || 0;
+            if (state.phase !== 'VOTE') return;
+            
+            if (!state.myVotesThisRound) state.myVotesThisRound = {};
+            
+            let currentVotesArr = Object.values(state.myVotesThisRound);
+            let spentThisRound = currentVotesArr.reduce((a, b) => a + b, 0);
+            let currentVotesForThisArt = state.myVotesThisRound[id] || 0;
 
-			if (delta > 0) {
-				// 強制檢查：如果增加後會超過剩餘票數，則拒絕動作
-				if (spentThisRound < state.totalVotesRemaining) {
-					state.myVotesThisRound[id] = currentVotesForThisArt + 1;
-				} else {
-					showToast(`您的餘額不足！ (僅剩 ${state.totalVotesRemaining - spentThisRound} 票)`);
-					return; // 終止函式，不執行渲染
-				}
-			} else if (delta < 0) {
-				if (currentVotesForThisArt > 0) {
-					state.myVotesThisRound[id] = currentVotesForThisArt - 1;
-				}
-			}
+            if (delta > 0) {
+                state.myVotesThisRound[id] = currentVotesForThisArt + 1;
+            } else if (delta < 0) {
+                if (currentVotesForThisArt > 0) {
+                    state.myVotesThisRound[id] = currentVotesForThisArt - 1;
+                }
+            }
 
-			// 更新顯示
-			let newSpent = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
-			document.getElementById('vote-count').innerText = `${newSpent} / ${state.totalVotesRemaining}`;
-			renderArtifacts();
-		}
+            let newSpent = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
+            document.getElementById('vote-count').innerText = `${newSpent}`;
+            renderArtifacts();
+        }
 
         function submitVotes() {
             let spentThisRound = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
-            if (spentThisRound > state.totalVotesRemaining) return showToast("超額投出！");
 
             if (isMultiplayer && !isHost) {
                 hostConn.send({ type: 'VOTE_ACTION', votes: state.myVotesThisRound });
@@ -913,7 +899,6 @@
                         spentThisRound += count;
                         const art = state.artifacts.find(a => a.id == artId);
                         art.votes += count;
-                        player.totalVotesRemaining -= count; 
                         state.roundLedger.push({ playerName: player.name, artifactName: art.name, votesCast: count, isUser: vr.id === state.myPlayerId });
                     }
                 }
@@ -921,16 +906,11 @@
                     state.roundLedger.push({ playerName: player.name, artifactName: "無 (棄票保留)", votesCast: 0, isUser: vr.id === state.myPlayerId });
                 }
 
-                if (vr.id === state.myPlayerId) {
-                    state.totalVotesRemaining = player.totalVotesRemaining;
-                }
             });
 
             state.players.forEach(p => {
                 if (!p.isBot) return;
-                let toCast = state.round === 3 ? p.totalVotesRemaining : Math.floor(Math.random() * (p.totalVotesRemaining + 1));
-                if (toCast > 3 && state.round !== 3) toCast = 2; 
-                p.totalVotesRemaining -= toCast;
+                let toCast = Math.floor(Math.random() * 3); // Bot random vote count
 
                 if (toCast > 0) {
                     const activeArts = getActiveArtifactsForCurrentRound();
@@ -955,7 +935,6 @@
 
         function executeDemoVoteSettlement() {
             let spentThisRound = Object.values(state.myVotesThisRound).reduce((a, b) => a + b, 0);
-            state.totalVotesRemaining -= spentThisRound;
             state.roundLedger = [];
 
             for (let id in state.myVotesThisRound) {
@@ -972,9 +951,7 @@
 
             state.players.forEach(p => {
                 if (!p.isBot) return;
-                let toCast = state.round === 3 ? p.totalVotesRemaining : Math.floor(Math.random() * (p.totalVotesRemaining + 1));
-                if (toCast > 3 && state.round !== 3) toCast = 2;
-                p.totalVotesRemaining -= toCast;
+                let toCast = Math.floor(Math.random() * 3);
 
                 if (toCast > 0) {
                     const activeArts = getActiveArtifactsForCurrentRound();
@@ -1155,7 +1132,7 @@
 
         function initGameUI() {
             if(!state.myRole) return;
-            const roleInfo = roleDatabase[state.myRole] || roleDatabase['路人專家'];
+            const roleInfo = roleDatabase[state.myRole] || roleDatabase['路人專家甲'];
             document.getElementById('my-role').innerText = roleInfo.roleName;
             document.getElementById('my-camp-desc').innerText = `宗師特技：${roleInfo.skillDesc}`;
             document.getElementById('round-display-header').innerText = `第 ${state.round} / 3 輪對弈`;
@@ -1197,7 +1174,7 @@
             } else if (state.phase === 'VOTE') {
                 document.getElementById('step-vote').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60 shadow-inner';
                 document.getElementById('panel-vote').classList.remove('hidden');
-                document.getElementById('vote-count').innerText = `0 / ${state.totalVotesRemaining}`;
+                document.getElementById('vote-count').innerText = `0`;
             } else if (state.phase === 'ROUND_SETTLEMENT') {
                 document.getElementById('step-vote').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60 shadow-inner';
                 document.getElementById('panel-round-settlement').classList.remove('hidden');
@@ -1219,10 +1196,9 @@
 
         function renderRoundSettlementScreen() {
             document.getElementById('settlement-round-title').innerText = `第 ${state.round} 輪 鑑定公投大起底`;
-            document.getElementById('settlement-remaining-votes').innerText = state.totalVotesRemaining;
             
             const btnNext = document.getElementById('btn-next-round');
-            btnNext.innerText = state.round < 3 ? `進入第 ${state.round + 1} 輪暗夜 (餘 ${state.totalVotesRemaining} 票)` : `進行最終結局大揭盅`;
+            btnNext.innerText = state.round < 3 ? `進入第 ${state.round + 1} 輪暗夜` : `進行最終結局大揭盅`;
             btnNext.classList.remove('pointer-events-none', 'opacity-50');
 
             const ledgerContainer = document.getElementById('round-settlement-ledger');
@@ -1242,15 +1218,15 @@
         function renderEndGameScreen() {
             let correctVotes = 0;
             state.artifacts.forEach(a => { if (a.isReal) correctVotes += a.votes; });
-            const win = correctVotes >= 18;
+            const win = correctVotes >= 6; // 好人需要投對6個真品
 
             const title = document.getElementById('end-winner-title');
             title.innerText = win ? '🟢 許願陣營 大獲全勝！' : '👹 老朝奉陣營 隻手遮天！';
             title.className = win ? 'text-2xl font-extrabold text-emerald-400 font-serif-china drop-shadow-md' : 'text-2xl font-extrabold text-red-500 font-serif-china drop-shadow-md';
             
             document.getElementById('end-score-desc').innerText = win ? 
-                `尋回真跡！好人大師們合計投給真品：${correctVotes} 票 (達標過半 18 票以上)！` :
-                `護寶失敗！好人大師們合計僅投給真品：${correctVotes} 票 (未達 18 票)。贗品橫行！`;
+                `尋回真跡！好人大師們合計投給真品：${correctVotes} 票 (達標 6 票)！` :
+                `護寶失敗！好人大師們合計僅投給真品：${correctVotes} 票 (未達 6 票)。贗品橫行！`;
 
             const summaryHtml = state.historicalLedgers.map((hl) => {
                 let realVotes = 0;
@@ -1427,7 +1403,7 @@
         function triggerLocalAIStrategy() {
             const activeArtsText = getActiveArtifactsForCurrentRound().map(a => a.name).join('、');
             const localDeductions = [
-                `【局中大勢秘判】昨夜風影搖晃，展位「${activeArtsText}」上鏽跡有新痕，恐已被邪派動了底。你身承【${state.myRole}】絕活，切記提防鄭教授與藥贗。此輪若無萬全把握，不妨暫時扣留餘票，待終局大揭底再梭哈反擊。`,
+                `【局中大勢秘判】昨夜風影搖晃，展位「${activeArtsText}」上鏽跡有新痕，恐已被邪派動了底。你身承【${state.myRole}】絕活，切記提防鄭教授與藥不然。此輪若無萬全把握，不妨暫時保留選票。`,
                 `【密室金科耳語】場上大師議論風向有古怪，有人在刻意替劣貨潑釉。依昨夜查驗日誌來看，或許早有人施展了隻手遮天。此時盲投風高浪急，好人一脈需緊盯公投帳冊的動向，方能破局！`
             ];
             showAIModal("🔮 掌眼大師 • 局勢秘判", localDeductions[Math.floor(Math.random() * localDeductions.length)]);
@@ -1449,7 +1425,7 @@
             const targetBot = state.players.find(p => p.id === botId);
             const isBad = ['老朝奉', '藥不然', '鄭教授'].includes(targetBot.role);
 
-            const goodReplies = ["掌眼的事，黑白分明，許某行得正坐得直，昨夜我走得光明磊落！", "莫要血口噴人！黃家一脈向來只認真跡，我的票只投真品！"];
+            const goodReplies = ["掌眼的事，黑白分明，許某行得正坐得直，昨夜我走得光明磊落！", "莫要血口噴人！我向來只認真跡，我的票只投真品！"];
             const badReplies = ["呵呵，江湖水深，真真假假豈是你能看透的？少在展台前潑髒水！", "大師莫急，打眼是常有的事。倒是你昨晚鬼鬼祟祟，賊喊捉賊吧？"];
             const selectedReply = isBad ? badReplies[Math.floor(Math.random() * badReplies.length)] : goodReplies[Math.floor(Math.random() * goodReplies.length)];
 
