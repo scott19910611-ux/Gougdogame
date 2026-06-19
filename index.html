@@ -163,7 +163,7 @@
                 <div id="step-night" class="py-1.5 rounded-lg text-amber-500 bg-amber-950/30 font-bold border border-amber-900/50">🌙 暗夜</div>
                 <div id="step-day" class="py-1.5 rounded-lg text-gray-500 font-medium">☀️ 白天</div>
                 <div id="step-vote" class="py-1.5 rounded-lg text-gray-500 font-medium">⚖️ 投票</div>
-                <div id="step-end" class="py-1.5 rounded-lg text-gray-500 font-medium">🏁 終局</div>
+                <div id="step-end" class="py-1.5 rounded-lg text-gray-500 font-medium">🏁 鑒人</div>
             </div>
 
             <div class="bg-gradient-to-br from-zinc-900 via-amber-950/10 to-zinc-900 border border-amber-900/30 p-4 rounded-xl relative overflow-hidden shadow-md">
@@ -284,8 +284,9 @@
 
             <!-- 終局大師鑒人投票 -->
             <div id="panel-final-vote" class="hidden space-y-4">
-                <div class="bg-zinc-900 border border-red-900/40 p-4 rounded-xl text-center shadow-md">
-                    <h3 class="text-lg font-bold text-red-500 font-serif-china mb-1 animate-pulse" id="final-vote-title">🔥 終局對決</h3>
+                <div class="bg-zinc-900 border border-red-900/40 p-4 rounded-xl text-center shadow-md relative">
+					<h3 class="text-lg font-bold text-red-500 font-serif-china mb-1 animate-pulse" id="final-vote-title">🔥 終局對決</h3>
+					<button onclick="showHistoryModal()" class="absolute top-2 right-2 text-[10px] bg-zinc-800 text-gray-300 px-2 py-1 rounded border border-red-800/50 hover:bg-zinc-700 transition relative z-50 pointer-events-auto">📜 卷宗</button>
                     <p class="text-xs text-gray-300 leading-relaxed" id="final-vote-desc">三輪鑒寶結束。請根據局勢投票！</p>
                 </div>
                 <button onclick="submitFinalVote()" class="w-full bg-red-900/50 hover:bg-red-800/60 border border-red-700/50 text-red-200 font-bold py-3.5 rounded-xl text-sm transition shadow-lg active:scale-95 relative z-50 pointer-events-auto">確認送交指控</button>
@@ -294,7 +295,7 @@
             <div id="panel-end" class="hidden bg-zinc-900 p-5 rounded-2xl border border-amber-800/30 space-y-4 text-center shadow-2xl">
                 <div class="inline-block text-5xl drop-shadow-md mb-2">🏁</div>
                 <h2 id="end-winner-title" class="text-xl font-extrabold text-amber-500 font-serif-china drop-shadow-sm">老朝奉陣營 隻手遮天！</h2>
-                <div id="end-final-vote-result" class="text-sm font-bold bg-zinc-950 p-3 rounded-lg border border-zinc-800 mt-2 text-center"></div>
+                <div id="end-score-details" class="text-sm bg-zinc-950 p-3 rounded-lg border border-zinc-800 mt-2 text-left space-y-3"></div>
                 <div class="border-t border-zinc-800 pt-4 mt-2 text-left">
                     <h4 class="text-sm font-bold text-amber-500 mb-3 font-serif-china">各大師真實底牌大起底</h4>
                     <ul id="end-players-reveal" class="text-sm text-gray-300 space-y-2 text-left divide-y divide-zinc-800/60 bg-zinc-950 p-3 rounded-xl border border-zinc-800"></ul>
@@ -342,7 +343,7 @@
             '黃煙煙': { roleName: '黃煙煙 (好人專家)', camp: 'GOOD', skillTitle: '【掌眼查驗】', skillDesc: '鑒定 1 個古董。整場遊戲中會有隨機 1 輪迷失(查驗失效)。', targetType: 'ARTIFACT' },
             '木戶加奈': { roleName: '木戶加奈 (好人專家)', camp: 'GOOD', skillTitle: '【掌眼查驗】', skillDesc: '鑒定 1 個古董。整場遊戲中會有隨機 1 輪迷失(查驗失效)。', targetType: 'ARTIFACT' },
             '姬雲浮': { roleName: '姬雲浮 (抗干擾專家)', camp: 'GOOD', skillTitle: '【破局金睛】', skillDesc: '鑒定 1 個古董，免疫老朝奉干擾。若遭藥不然偷襲則永久失效。', targetType: 'ARTIFACT' },
-            '老朝奉': { roleName: '老朝奉 (邪派頭目)', camp: 'BAD', skillTitle: '【顛倒黑白】', skillDesc: '發動後，後續行動的大師鑒定所有古董的真假結果都會互換(除姬雲浮)。無需點選目標。', targetType: 'NONE' },
+            '老朝奉': { roleName: '老朝奉 (邪派頭目)', camp: 'BAD', skillTitle: '【顛倒黑白】', skillDesc: '鑒定 1 個古董。發動後，後續行動的大師鑒定所有古董的真假結果都會互換(除姬雲浮)。', targetType: 'ARTIFACT' },
             '藥不然': { roleName: '藥不然 (贗品大師)', camp: 'BAD', skillTitle: '【暗中偷襲】', skillDesc: '鑒定 1 個古董並偷襲 1 名大師，使其下輪失效。若偷襲方震，許願連帶受害。', targetType: 'BOTH' },
             '鄭國渠': { roleName: '鄭國渠 (偽裝專家)', camp: 'BAD', skillTitle: '【隻手遮天】', skillDesc: '鑒定並覆蓋 1 個古董。在您之後行動的大師若鑒定它，只會顯示無法鑑定。', targetType: 'ARTIFACT' }
         };
@@ -359,8 +360,8 @@
                 idle: "真相只有一個，大家別被表象迷惑了，仔細盤盤票型。"
             },
             '藥不然': {
-                trueClaim: "我什麼場面沒見過？這{art}用儀器一測就知道是真的。",
-                falseClaim: "別逗了，這{art}一眼假，當我是吃素的？誰保它誰就是內鬼。",
+                trueClaim: "藥二爺我什麼場面沒見過？這{art}用儀器一測就知道是真的。",
+                falseClaim: "別逗了，這{art}一眼假，當我藥家是吃素的？誰保它誰就是內鬼。",
                 confused: "嘖，這{art}數據不對勁，有人在搞小動作。",
                 agree: "算你還有點眼力見，這波我跟了。",
                 disagree: "笑死，你這水平也敢拿出來秀？錯得離譜。",
@@ -429,7 +430,7 @@
             daySequence: [], daySpeakerIndex: 0, isStrictSpeaking: false,
 
             roundLedger: [], historicalLedgers: [], votesReceived: [], finalVotesReceived: [], finalVoteTarget: null,
-            sequenceActions: {}, chatHistory: []
+            sequenceActions: {}, chatHistory: [], lastRoundLastActorId: null
         };
 
         let nightSelections = { artifactId: [], playerId: null, nextPlayerId: null, skipped: false };
@@ -656,7 +657,13 @@
             state.laoChaofengActedIndex = -1; state.zhengGuoquCoveredArtifacts = []; state.sequenceActions = {}; state.isSelectingNextPlayer = false;
             botChatTimeouts.forEach(clearTimeout); botChatTimeouts = [];
 
-            const firstId = state.unactedPlayers[Math.floor(Math.random() * state.unactedPlayers.length)];
+            let firstId;
+            if (state.round === 1 || !state.lastRoundLastActorId) {
+                firstId = state.unactedPlayers[Math.floor(Math.random() * state.unactedPlayers.length)];
+            } else {
+                firstId = state.lastRoundLastActorId;
+            }
+            
             state.nightSequence.push(state.players.find(p => p.id === firstId));
             state.unactedPlayers = state.unactedPlayers.filter(id => id !== firstId);
             if (isHost || state.mode === 'demo') runNightTurnLogic();
@@ -687,7 +694,7 @@
             const roleInfo = roleDatabase[botPlayer.role], activeArts = getActiveArtifactsForCurrentRound();
             let artIds = [];
             
-            let willSkip = Math.random() < 0.1;
+            let willSkip = (roleInfo.camp === 'BAD') && (Math.random() < 0.1);
             
             if (!willSkip) {
                 if (roleInfo.targetType === 'ARTIFACT_2') { const shuffled = [...activeArts].sort(() => Math.random() - 0.5); artIds = [shuffled[0].id, shuffled[1].id]; } 
@@ -742,7 +749,6 @@
             if (roleInfo.targetType === 'PLAYER' || roleInfo.targetType === 'NONE') document.getElementById('night-planned-summary').classList.add('hidden');
             else { document.getElementById('night-planned-summary').classList.remove('hidden'); document.getElementById('night-planned-summary').innerHTML = `🔍 查驗目標：${artNames.length > 0 ? `<span class="text-amber-400 font-bold">[${artNames.join(', ')}]</span>` : '<span class="text-zinc-500">尚未選擇</span>'}`; }
             if (roleInfo.targetType === 'BOTH' || roleInfo.targetType === 'PLAYER') { document.getElementById('night-skill-summary').classList.remove('hidden'); document.getElementById('night-skill-summary').innerHTML = `🎯 特技目標：${p ? `<span class="text-purple-400 font-bold">[${p.name}]</span>` : '<span class="text-zinc-500">尚未選擇</span>'}`; }
-            else if (roleInfo.targetType === 'NONE') { document.getElementById('night-skill-summary').classList.remove('hidden'); document.getElementById('night-skill-summary').innerHTML = `🎯 特技效果：<span class="text-purple-400 font-bold">後續查驗真假顛倒</span>`; }
             else document.getElementById('night-skill-summary').classList.add('hidden');
         }
 
@@ -766,8 +772,13 @@
             const myStatus = state.playerStatuses[state.myPlayerId];
             let isMuted = myStatus.permanentlyDisabled || myStatus.attackedByYao || myStatus.randomDisableRound === state.round, resultTexts = [];
 
-            if (isMuted) resultTexts.push("遭人暗算或逢迷失，\n查驗徹底失敗！");
-            else {
+            if (myStatus.permanentlyDisabled) {
+                resultTexts.push("您已被【藥不然】重傷，\n永久失去鑒定能力！");
+            } else if (myStatus.attackedByYao) {
+                resultTexts.push("您上一輪遭到【藥不然】暗中偷襲！\n本輪鑒定能力失效！");
+            } else if (myStatus.randomDisableRound === state.round) {
+                resultTexts.push("您本輪陷入了迷失，\n查驗徹底失敗！");
+            } else {
                 if (roleInfo.targetType === 'ARTIFACT_2') {
                     const r1 = getArtifactVerificationResult(nightSelections.artifactId[0], state.myRole, state.currentSequenceIndex), r2 = getArtifactVerificationResult(nightSelections.artifactId[1], state.myRole, state.currentSequenceIndex);
                     const a1 = state.artifacts.find(a => a.id === nightSelections.artifactId[0]), a2 = state.artifacts.find(a => a.id === nightSelections.artifactId[1]);
@@ -775,11 +786,10 @@
                 } else if (roleInfo.targetType === 'PLAYER') {
                     const target = state.players.find(p => p.id === nightSelections.playerId), isBad = roleDatabase[target.role]?.camp === 'BAD';
                     resultTexts.push(`[${target.name}] 陣營: <span class="${isBad?'text-red-400':'text-emerald-400'}">${isBad ? '邪派' : '好人'}</span>`);
-                } else if (roleInfo.targetType === 'NONE') {
-                    resultTexts.push(`迷霧已佈下！\n排在您後面的大師查驗結果皆會顛倒。`);
                 } else {
                     const r = getArtifactVerificationResult(nightSelections.artifactId[0], state.myRole, state.currentSequenceIndex), a = state.artifacts.find(a => a.id === nightSelections.artifactId[0]);
                     resultTexts.push(`[${a.name}]: <span class="${r.includes('真')?'text-emerald-400':(r.includes('假')||r.includes('贗')?'text-red-400':'text-zinc-400')}">${r}</span>`);
+                    if (state.myRole === '老朝奉') resultTexts.push(`<span class="text-purple-400 text-xs">迷霧已佈下！排在您後面的大師查驗結果皆會顛倒。</span>`);
                 }
             }
             document.getElementById('nr-result-text').innerHTML = resultTexts.join('<br>'); document.getElementById('night-result-modal').classList.remove('hidden');
@@ -809,6 +819,7 @@
                 });
                 state.queuedAttacks = [];
             }
+            state.lastRoundLastActorId = state.nightSequence[state.nightSequence.length - 1].id;
             triggerPhaseTransition("☀️", "天亮開眼", "進入白日議論大會...", startDayRound);
         }
 
@@ -1036,7 +1047,7 @@
                 if(state.players.find(p=>p.id===state.myPlayerId)) state.totalVotesRemaining += 2;
                 state.phase = 'NIGHT'; startNightRound(); 
             });
-            else triggerPhaseTransition("⚖️", "終局大師鑒人", "誰是幕後黑手...", () => { state.phase = 'FINAL_VOTE'; state.finalVotesReceived = []; state.finalVoteTarget = null; if(isHost) broadcastState(); initGameUI(); });
+            else triggerPhaseTransition("⚖️", "大師鑒人", "誰是幕後黑手...", () => { state.phase = 'FINAL_VOTE'; state.finalVotesReceived = []; state.finalVoteTarget = null; if(isHost) broadcastState(); initGameUI(); });
         }
 
         window.submitFinalVote = function() {
@@ -1212,6 +1223,11 @@
                 const activePlayer = state.nightSequence[state.currentSequenceIndex];
                 if (activePlayer && activePlayer.id === state.myPlayerId) {
                     document.getElementById('panel-night').classList.remove('hidden');
+                    if (roleDatabase[state.myRole].camp === 'GOOD') {
+                        document.getElementById('btn-skip-night').classList.add('hidden');
+                    } else {
+                        document.getElementById('btn-skip-night').classList.remove('hidden');
+                    }
                     if (state.isSelectingNextPlayer) { document.getElementById('night-title-header').innerText = '請指定下一位行動大師'; document.getElementById('night-instruction').innerText = '點擊下方大師卡片以傳遞回合'; document.getElementById('skill-action-area').classList.add('hidden'); document.getElementById('night-resolution-box').classList.add('hidden'); } 
                     else { document.getElementById('night-title-header').innerText = `規劃您的暗夜能力`; document.getElementById('skill-action-area').classList.remove('hidden'); document.getElementById('night-resolution-box').classList.remove('hidden'); }
                 } else if (activePlayer) { document.getElementById('night-blindfold-mask').classList.remove('hidden'); document.getElementById('blindfold-desc').innerText = `輪到 【${activePlayer.name}】 行動中...`; }
@@ -1250,6 +1266,14 @@
             else if (state.phase === 'VOTE') { document.getElementById('step-vote').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60'; document.getElementById('panel-vote').classList.remove('hidden'); } 
             else if (state.phase === 'ROUND_SETTLEMENT') {
                 document.getElementById('step-vote').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60'; document.getElementById('panel-round-settlement').classList.remove('hidden'); document.getElementById('grid-parent').classList.add('hidden'); document.getElementById('players-parent').classList.add('hidden');
+                
+                const btnNext = document.getElementById('btn-next-round');
+                if (state.round === 3) {
+                    btnNext.innerText = "進入終局鑒人環節";
+                } else {
+                    btnNext.innerText = "進入下一回合 (獲得 2 票)";
+                }
+
                 if (state.revealedArtifactThisRound) { const a = state.revealedArtifactThisRound, activeArts = getActiveArtifactsForCurrentRound(), top2 = activeArts.filter(x => state.protectedArtifactsGlobal.includes(x.id)).slice(-2); document.getElementById('round-settlement-reveal').innerHTML = `<div class="bg-zinc-900 border border-emerald-900/50 p-3 rounded-lg mb-4 shadow-sm"><div class="text-emerald-400 font-bold text-sm mb-1">🏆 本輪獲得保護的古董：</div><div class="text-gray-300 text-sm">${top2.map(x => `[${x.name}] (${x.votes}票)`).join(', ')}</div></div><div class="bg-zinc-950 p-4 rounded-xl border ${a.isReal ? 'border-emerald-500/50':'border-red-500/50'} text-center shadow-[0_0_15px_rgba(${a.isReal?'16,185,129':'239,68,68'},0.15)]"><p class="text-gray-400 text-xs mb-1 font-bold tracking-wider">📢 天眼公開 (本輪得票第二高)</p><p class="text-lg font-extrabold font-serif-china ${a.isReal ? 'text-emerald-400':'text-red-400'}">[${a.name}] 為 ${a.isReal?'【真跡】':'【贗品】'}</p></div>`; }
                 document.getElementById('round-settlement-ledger').innerHTML = state.roundLedger.map(v => `<div class="p-3 rounded-lg bg-zinc-900/80 border border-zinc-800 flex flex-col gap-1 text-sm"><span class="font-bold text-gray-200">👤 ${v.name} <span class="text-xs text-zinc-500 ml-1 ${state.godMode ? 'inline':'hidden'}">(${v.role})</span></span><span class="text-amber-500/90 font-medium pl-4 border-l-2 border-zinc-700">➔ ${v.votes.join(', ')}</span></div>`).join('');
             } else if (state.phase === 'FINAL_VOTE') {
@@ -1257,14 +1281,93 @@
                 if (state.myRole === '老朝奉') document.getElementById('final-vote-title').innerText = '🔪 終局暗殺：尋找許願！'; else if (state.myRole === '藥不然') document.getElementById('final-vote-title').innerText = '🔪 終局盲狙：尋找方震！'; else document.getElementById('final-vote-title').innerText = '🔥 終局對決：捉拿老朝奉！';
             } else if (state.phase === 'END') {
                 document.getElementById('step-end').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60'; document.getElementById('panel-end').classList.remove('hidden'); document.getElementById('grid-parent').classList.add('hidden'); document.getElementById('players-parent').classList.add('hidden');
-                let protectedRealCount = 0; if(state.protectedArtifactsGlobal) state.protectedArtifactsGlobal.forEach(id => { if (state.artifacts.find(a => a.id === id).isReal) protectedRealCount++; });
-                let goodScore = protectedRealCount, xuYuanId = state.players.find(p => p.role === '許願')?.id, fangZhenId = state.players.find(p => p.role === '方震')?.id, laoChaofengId = state.players.find(p => p.role === '老朝奉')?.id;
-                let laoTarget = null, yaoTarget = null, suspects = {};
-                state.finalVotesReceived.forEach(v => { const voterCamp = roleDatabase[state.players.find(p => p.id === v.id).role].camp; if (state.players.find(p => p.id === v.id).role === '老朝奉') laoTarget = v.targetId; if (state.players.find(p => p.id === v.id).role === '藥不然') yaoTarget = v.targetId; if (voterCamp === 'GOOD') suspects[v.targetId] = (suspects[v.targetId] || 0) + 1; });
-                if (laoTarget !== xuYuanId) goodScore += 1; if (yaoTarget !== fangZhenId) goodScore += 1;
-                let maxVotes = 0, caughtId = null; for(let id in suspects) { if(suspects[id] > maxVotes) { maxVotes = suspects[id]; caughtId = id; } } if (caughtId === laoChaofengId) goodScore += 1;
-                document.getElementById('end-winner-title').innerText = goodScore >= 6 ? '🟢 許願陣營 大獲全勝！' : '👹 老朝奉陣營 隻手遮天！'; document.getElementById('end-winner-title').className = goodScore >= 6 ? 'text-2xl font-extrabold text-emerald-400 font-serif-china' : 'text-2xl font-extrabold text-red-500 font-serif-china';
-                document.getElementById('end-final-vote-result').innerHTML = `<ul class="text-left text-xs space-y-1 mt-2 text-zinc-300 inline-block"><li>保護真品數量: <span class="text-amber-400 font-bold">${protectedRealCount}</span> 分</li><li>許願是否存活: <span class="text-amber-400 font-bold">${laoTarget !== xuYuanId ? 1 : 0}</span> 分</li><li>方震是否存活: <span class="text-amber-400 font-bold">${yaoTarget !== fangZhenId ? 1 : 0}</span> 分</li><li>成功抓獲老朝奉: <span class="text-amber-400 font-bold">${caughtId === laoChaofengId ? 1 : 0}</span> 分</li><li class="border-t border-zinc-700 pt-1 mt-1 font-bold text-sm">好人總得分: <span class="${goodScore >= 6 ? 'text-emerald-400':'text-red-400'}">${goodScore}</span> / 6 (獲勝門檻)</li></ul>`;
+                
+                let protectedRealCount = 0;
+                let protectedDetails = [];
+                if(state.protectedArtifactsGlobal) {
+                    state.protectedArtifactsGlobal.forEach(id => { 
+                        const a = state.artifacts.find(art => art.id === id);
+                        if (a.isReal) protectedRealCount++; 
+                        protectedDetails.push(`[${a.name}] (${a.isReal ? '真' : '贗'})`);
+                    });
+                }
+
+                let goodScore = protectedRealCount;
+                let xuYuanId = state.players.find(p => p.role === '許願')?.id;
+                let fangZhenId = state.players.find(p => p.role === '方震')?.id;
+                let laoChaofengId = state.players.find(p => p.role === '老朝奉')?.id;
+                let yaoBuranId = state.players.find(p => p.role === '藥不然')?.id;
+
+                let laoTarget = null, yaoTarget = null;
+                let suspectVotes = {}; 
+                
+                state.finalVotesReceived.forEach(v => { 
+                    const voter = state.players.find(p => p.id === v.id);
+                    if (voter.role === '老朝奉') laoTarget = v.targetId; 
+                    else if (voter.role === '藥不然') yaoTarget = v.targetId; 
+                    else if (roleDatabase[voter.role].camp === 'GOOD') {
+                        if(!suspectVotes[v.targetId]) suspectVotes[v.targetId] = [];
+                        suspectVotes[v.targetId].push(voter.name);
+                    }
+                });
+
+                if (laoTarget !== xuYuanId) goodScore += 1; 
+                if (yaoTarget !== fangZhenId) goodScore += 1;
+                
+                let maxVotes = 0, caughtId = null; 
+                for(let tId in suspectVotes) { 
+                    if(suspectVotes[tId].length > maxVotes) { 
+                        maxVotes = suspectVotes[tId].length; 
+                        caughtId = tId; 
+                    } 
+                } 
+                const goodGuysCount = state.players.filter(p => roleDatabase[p.role].camp === 'GOOD').length;
+                const neededVotes = Math.floor(goodGuysCount / 2) + 1;
+                let laoCaught = false;
+                if (caughtId === laoChaofengId && maxVotes >= neededVotes) {
+                    laoCaught = true;
+                    goodScore += 1;
+                }
+
+                let laoTargetName = state.players.find(p => p.id === laoTarget)?.name || '無';
+                let yaoTargetName = state.players.find(p => p.id === yaoTarget)?.name || '無';
+                let xuYuanName = state.players.find(p => p.id === xuYuanId)?.name || '無';
+                let fangZhenName = state.players.find(p => p.id === fangZhenId)?.name || '無';
+                let laoChaofengName = state.players.find(p => p.id === laoChaofengId)?.name || '無';
+
+                let suspectVotesHtml = Object.keys(suspectVotes).map(tId => {
+                    let tName = state.players.find(p => p.id === tId)?.name;
+                    return `<div><span class="text-gray-300 font-bold">${tName}</span>: ${suspectVotes[tId].join(', ')} <span class="text-amber-500 font-bold">(${suspectVotes[tId].length}票)</span></div>`;
+                }).join('');
+
+                let detailsHtml = `
+                    <div class="mb-2">
+                        <div class="text-amber-500 font-bold border-b border-zinc-700 pb-1 mb-1">(1) 鑒寶分數 (+${protectedRealCount})</div>
+                        <div class="text-gray-300 text-xs leading-relaxed">保護名單: ${protectedDetails.length > 0 ? protectedDetails.join(', ') : '無'}</div>
+                    </div>
+                    <div class="mb-2">
+                        <div class="text-amber-500 font-bold border-b border-zinc-700 pb-1 mb-1">(2) 找出許願 (+${laoTarget !== xuYuanId ? 1 : 0})</div>
+                        <div class="text-gray-300 text-xs">老朝奉指認了 <strong>${laoTargetName}</strong>。<br>許願真實身分是 <strong>${xuYuanName}</strong>。</div>
+                    </div>
+                    <div class="mb-2">
+                        <div class="text-amber-500 font-bold border-b border-zinc-700 pb-1 mb-1">(3) 找出方震 (+${yaoTarget !== fangZhenId ? 1 : 0})</div>
+                        <div class="text-gray-300 text-xs">藥不然指認了 <strong>${yaoTargetName}</strong>。<br>方震真實身分是 <strong>${fangZhenName}</strong>。</div>
+                    </div>
+                    <div class="mb-2">
+                        <div class="text-amber-500 font-bold border-b border-zinc-700 pb-1 mb-1">(4) 找出老朝奉 (+${laoCaught ? 1 : 0})</div>
+                        <div class="text-gray-300 text-xs mb-1">老朝奉真實身分是 <strong>${laoChaofengName}</strong>。<br>好人陣營投票分佈 (需達 ${neededVotes} 票):</div>
+                        <div class="text-zinc-400 text-xs bg-zinc-900 p-2 rounded shadow-inner">${suspectVotesHtml || '無投票'}</div>
+                    </div>
+                    <div class="text-center font-bold text-lg mt-3 pt-2 border-t border-zinc-600">
+                        好人總得分: <span class="${goodScore >= 6 ? 'text-emerald-400':'text-red-400'}">${goodScore}</span> / 6 (門檻)
+                    </div>
+                `;
+                
+                document.getElementById('end-score-details').innerHTML = detailsHtml;
+
+                document.getElementById('end-winner-title').innerText = goodScore >= 6 ? '🟢 許願陣營 大獲全勝！' : '👹 老朝奉陣營 隻手遮天！'; 
+                document.getElementById('end-winner-title').className = goodScore >= 6 ? 'text-2xl font-extrabold text-emerald-400 font-serif-china' : 'text-2xl font-extrabold text-red-500 font-serif-china';
+                
                 document.getElementById('end-players-reveal').innerHTML = state.players.map(p => `<li class="py-2 text-sm flex justify-between items-center px-1"><div class="flex items-center gap-2"><span class="text-xl">${p.avatar}</span><span class="font-medium text-gray-300">${p.name}</span></div> <strong class="text-amber-400">${p.role}</strong></li>`).join('');
             }
             renderArtifacts(); renderPlayerSlots();
