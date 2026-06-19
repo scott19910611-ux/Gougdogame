@@ -123,7 +123,7 @@
                 </div>
                 <label class="flex items-center space-x-2 text-sm text-gray-300 mt-2 cursor-pointer">
                     <input type="checkbox" id="checkbox-fill-ai" class="w-4 h-4 text-amber-500 bg-zinc-900 border-zinc-700 rounded focus:ring-amber-500">
-                    <span>自動補齊 AI 專家至 8 人 (預設不補)</span>
+                    <span>自動補齊 AI 專家至 8 人 (未滿 6 人將強制補至 6 人)</span>
                 </label>
             </div>
             
@@ -284,12 +284,18 @@
 
             <!-- 終局大師鑒人投票 -->
             <div id="panel-final-vote" class="hidden space-y-4">
-                <div class="bg-zinc-900 border border-red-900/40 p-4 rounded-xl text-center shadow-md relative">
-					<h3 class="text-lg font-bold text-red-500 font-serif-china mb-1 animate-pulse" id="final-vote-title">🔥 終局對決</h3>
-					<button onclick="showHistoryModal()" class="absolute top-2 right-2 text-[10px] bg-zinc-800 text-gray-300 px-2 py-1 rounded border border-red-800/50 hover:bg-zinc-700 transition relative z-50 pointer-events-auto">📜 卷宗</button>
-                    <p class="text-xs text-gray-300 leading-relaxed" id="final-vote-desc">三輪鑒寶結束。請根據局勢投票！</p>
+                <div class="bg-zinc-900 border border-red-900/40 p-4 rounded-xl text-center shadow-md">
+                    <h3 class="text-lg font-bold text-red-500 font-serif-china mb-1 animate-pulse" id="final-vote-title">🔥 終局對決</h3>
+                    <p class="text-xs text-gray-300 leading-relaxed" id="final-vote-desc">三輪鑒寶結束。請根據局勢，點擊大師卡片進行指認！</p>
                 </div>
-                <button onclick="submitFinalVote()" class="w-full bg-red-900/50 hover:bg-red-800/60 border border-red-700/50 text-red-200 font-bold py-3.5 rounded-xl text-sm transition shadow-lg active:scale-95 relative z-50 pointer-events-auto">確認送交指控</button>
+                <div class="flex gap-3">
+                    <button onclick="showHistoryModal()" class="w-1/3 bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 text-gray-300 font-bold py-3.5 rounded-xl text-sm transition shadow-lg active:scale-95 relative z-50 pointer-events-auto flex items-center justify-center gap-1.5">
+                        📜 卷宗
+                    </button>
+                    <button onclick="submitFinalVote()" class="w-2/3 bg-red-900/50 hover:bg-red-800/60 border border-red-700/50 text-red-200 font-bold py-3.5 rounded-xl text-sm transition shadow-lg active:scale-95 relative z-50 pointer-events-auto">
+                        確認送交指控
+                    </button>
+                </div>
             </div>
 
             <div id="panel-end" class="hidden bg-zinc-900 p-5 rounded-2xl border border-amber-800/30 space-y-4 text-center shadow-2xl">
@@ -486,7 +492,10 @@
                     const p = state.players.find(x => x.peerId === conn.peer);
                     if (p) {
                         if (state.phase === 'LOBBY') state.players = state.players.filter(x => x.id !== p.id);
-                        else p.disconnected = true; 
+                        else {
+                            p.disconnected = true; 
+                            checkPhaseAdvancementOnDisconnect();
+                        }
                         connections = connections.filter(c => c.peer !== conn.peer);
                         broadcastState(); updateLobbyUI();
                     }
@@ -526,8 +535,9 @@
             if (data.type === 'JOIN') {
                 const existing = state.players.find(p => p.id === data.id);
                 if (existing) {
+                    const oldPeerId = existing.peerId;
                     existing.peerId = webRtcId; existing.disconnected = false; existing.name = data.name;
-                    connections = connections.filter(c => c.peer !== webRtcId);
+                    connections = connections.filter(c => c.peer !== oldPeerId && c.peer !== webRtcId);
                     connections.push(conn);
                     conn.send({ type: 'SYNC', state: state }); 
                     showToast(`${data.name} 重新連線成功！`);
@@ -572,6 +582,25 @@
 
         function broadcastState() { if (isHost) connections.forEach(c => c.send({ type: 'SYNC', state: state })); }
         
+        function checkPhaseAdvancementOnDisconnect() {
+            if (!isHost) return;
+            if (state.phase === 'VOTE') {
+                const activeHumans = state.players.filter(p => !p.isBot && !p.disconnected).length;
+                if (state.votesReceived.length >= Math.max(1, activeHumans)) executeVoteSettlementCore(state.votesReceived);
+                else if (activeHumans === 0 && state.votesReceived.length === 0) executeVoteSettlementCore([]);
+            } else if (state.phase === 'FINAL_VOTE') {
+                const activeHumans = state.players.filter(p => !p.isBot && !p.disconnected).length;
+                if (state.finalVotesReceived.length >= Math.max(1, activeHumans)) finalizeGameResult();
+                else if (activeHumans === 0 && state.finalVotesReceived.length === 0) finalizeGameResult();
+            } else if (state.phase === 'DAY' && state.isStrictSpeaking) {
+                const activeId = state.daySequence[state.daySpeakerIndex];
+                if (state.players.find(x => x.id === activeId)?.disconnected) advanceDayTurn();
+            } else if (state.phase === 'NIGHT') {
+                const activeId = state.nightSequence[state.currentSequenceIndex]?.id;
+                if (state.players.find(x => x.id === activeId)?.disconnected) runNightTurnLogic();
+            }
+        }
+
         function updateLobbyUI() {
             if(state.roomCode) document.getElementById('display-room-code').innerText = state.roomCode;
             document.getElementById('player-count').innerText = state.players.length;
@@ -611,14 +640,15 @@
             if (!isHost || state.players.length < 2) return;
             const fillAI = document.getElementById('checkbox-fill-ai').checked;
             let shuffledAvatars = [...AVATARS].sort(() => Math.random() - 0.5);
-            if (fillAI) {
-                while (state.players.length < 8) { 
-                    state.players.push({ 
-                        id: `bot_${state.players.length}`, name: `專家-${state.players.length}`, avatar: shuffledAvatars[state.players.length % AVATARS.length], role: '', isBot: true, totalVotesRemaining: 2, 
-                        personality: personalities[Math.floor(Math.random() * personalities.length)], disconnected: false
-                    }); 
-                }
+            
+            const targetCount = fillAI ? 8 : Math.max(6, state.players.length);
+            while (state.players.length < targetCount) { 
+                state.players.push({ 
+                    id: `bot_${state.players.length}`, name: `專家-${state.players.length}`, avatar: shuffledAvatars[state.players.length % AVATARS.length], role: '', isBot: true, totalVotesRemaining: 2, 
+                    personality: personalities[Math.floor(Math.random() * personalities.length)], disconnected: false
+                }); 
             }
+            
             state.players.forEach(p => p.totalVotesRemaining = 2); initGameData();
         }
 
@@ -998,6 +1028,7 @@
         }
 
         function handleMultiplayerVote(playerId, votesMap) {
+            if (state.votesReceived.some(v => v.id === playerId)) return;
             state.votesReceived.push({ id: playerId, votes: votesMap }); 
             const activeHumans = state.players.filter(p => !p.isBot && !p.disconnected).length;
             if (state.votesReceived.length >= activeHumans) executeVoteSettlementCore(state.votesReceived);
@@ -1057,6 +1088,7 @@
         }
 
         function handleMultiplayerFinalVote(playerId, targetId) { 
+            if (state.finalVotesReceived.some(v => v.id === playerId)) return;
             state.finalVotesReceived.push({ id: playerId, targetId: targetId }); 
             const activeHumans = state.players.filter(p => !p.isBot && !p.disconnected).length;
             if (state.finalVotesReceived.length >= activeHumans) finalizeGameResult(); 
@@ -1130,7 +1162,12 @@
 
                 if (state.phase === 'VOTE' && isActive) {
                     const myVoteCount = state.myVotesThisRound[a.id] || 0;
-                    voteControls = `<div class="mt-3 flex items-center justify-between bg-zinc-950 rounded-lg p-1 border ${myVoteCount > 0 ? 'border-amber-500/50' : 'border-zinc-700'} relative z-50 pointer-events-auto"><button onclick="window.changeVote(${a.id}, -1); event.stopPropagation();" class="w-8 h-8 flex items-center justify-center bg-red-900/80 hover:bg-red-700 text-white rounded font-bold shadow-sm transition-colors disabled:opacity-30" ${myVoteCount === 0 ? 'disabled' : ''}>-</button><span class="text-sm font-bold ${myVoteCount > 0 ? 'text-amber-400' : 'text-gray-400'}">${myVoteCount} 票</span><button onclick="window.changeVote(${a.id}, 1); event.stopPropagation();" class="w-8 h-8 flex items-center justify-center bg-emerald-900/80 hover:bg-emerald-700 text-white rounded font-bold shadow-sm transition-colors disabled:opacity-30" ${Object.values(state.myVotesThisRound).reduce((a,b)=>a+b,0) >= state.totalVotesRemaining ? 'disabled' : ''}>+</button></div>`;
+                    const hasVoted = state.votesReceived && state.votesReceived.some(v => v.id === state.myPlayerId);
+                    if (!hasVoted) {
+                        voteControls = `<div class="mt-3 flex items-center justify-between bg-zinc-950 rounded-lg p-1 border ${myVoteCount > 0 ? 'border-amber-500/50' : 'border-zinc-700'} relative z-50 pointer-events-auto"><button onclick="window.changeVote(${a.id}, -1); event.stopPropagation();" class="w-8 h-8 flex items-center justify-center bg-red-900/80 hover:bg-red-700 text-white rounded font-bold shadow-sm transition-colors disabled:opacity-30" ${myVoteCount === 0 ? 'disabled' : ''}>-</button><span class="text-sm font-bold ${myVoteCount > 0 ? 'text-amber-400' : 'text-gray-400'}">${myVoteCount} 票</span><button onclick="window.changeVote(${a.id}, 1); event.stopPropagation();" class="w-8 h-8 flex items-center justify-center bg-emerald-900/80 hover:bg-emerald-700 text-white rounded font-bold shadow-sm transition-colors disabled:opacity-30" ${Object.values(state.myVotesThisRound).reduce((a,b)=>a+b,0) >= state.totalVotesRemaining ? 'disabled' : ''}>+</button></div>`;
+                    } else if (myVoteCount > 0) {
+                        voteControls = `<div class="mt-3 bg-zinc-950 rounded-lg p-1.5 border border-amber-500/50 text-xs text-amber-400 font-bold shadow-sm text-center">已鎖定: ${myVoteCount} 票</div>`;
+                    }
                     if (myVoteCount > 0) borderClass = 'border-amber-400 bg-amber-950/30 text-amber-300 font-extrabold gold-glow shadow-[0_0_15px_rgba(217,119,6,0.5)]';
                 }
 
@@ -1223,17 +1260,31 @@
                 const activePlayer = state.nightSequence[state.currentSequenceIndex];
                 if (activePlayer && activePlayer.id === state.myPlayerId) {
                     document.getElementById('panel-night').classList.remove('hidden');
-                    if (roleDatabase[state.myRole].camp === 'GOOD') {
-                        document.getElementById('btn-skip-night').classList.add('hidden');
-                    } else {
-                        document.getElementById('btn-skip-night').classList.remove('hidden');
-                    }
+                    document.getElementById('night-blindfold-mask').classList.add('hidden');
+                    setupPlayerNightAction();
                     if (state.isSelectingNextPlayer) { document.getElementById('night-title-header').innerText = '請指定下一位行動大師'; document.getElementById('night-instruction').innerText = '點擊下方大師卡片以傳遞回合'; document.getElementById('skill-action-area').classList.add('hidden'); document.getElementById('night-resolution-box').classList.add('hidden'); } 
                     else { document.getElementById('night-title-header').innerText = `規劃您的暗夜能力`; document.getElementById('skill-action-area').classList.remove('hidden'); document.getElementById('night-resolution-box').classList.remove('hidden'); }
-                } else if (activePlayer) { document.getElementById('night-blindfold-mask').classList.remove('hidden'); document.getElementById('blindfold-desc').innerText = `輪到 【${activePlayer.name}】 行動中...`; }
+                } else if (activePlayer) { 
+                    document.getElementById('panel-night').classList.add('hidden');
+                    document.getElementById('night-blindfold-mask').classList.remove('hidden'); 
+                    document.getElementById('blindfold-desc').innerText = `輪到 【${activePlayer.name}】 行動中...`; 
+                }
             } else if (state.phase === 'DAY') { 
                 document.getElementById('step-day').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60'; document.getElementById('panel-day').classList.remove('hidden'); 
                 
+                const chatBox = document.getElementById('solo-chat-messages');
+                if (chatBox.innerHTML === '') {
+                    state.chatHistory.forEach(c => {
+                        const isMe = c.speaker === state.players.find(p=>p.id===state.myPlayerId)?.name;
+                        const speakerRole = state.players.find(p=>p.name === c.speaker)?.role || '';
+                        const roleStr = state.godMode ? ` <span class="text-xs text-zinc-500">(${speakerRole})</span>` : '';
+                        const nameColor = isMe ? 'text-amber-300' : 'text-amber-500';
+                        const speakerAvatar = state.players.find(p=>p.name === c.speaker)?.avatar || '👤';
+                        chatBox.innerHTML += `<div class="bg-zinc-900/90 p-3 rounded-xl border border-zinc-800 text-sm shadow-sm transition hover:bg-zinc-800/80"><span class="font-bold ${nameColor} flex items-center gap-2"><span class="text-lg">${speakerAvatar}</span> ${c.speaker}${roleStr}</span><p class="chat-bubble text-gray-200 mt-1.5 leading-relaxed tracking-wide pl-7">${c.msg}</p></div>`;
+                    });
+                    setTimeout(() => { chatBox.scrollTop = chatBox.scrollHeight; }, 50);
+                }
+
                 if (state.isStrictSpeaking) {
                     document.getElementById('day-status-indicator').innerHTML = '<span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span> 依序發言中';
                     document.getElementById('day-turn-banner').classList.remove('hidden');
@@ -1263,22 +1314,32 @@
                     document.getElementById('btn-end-turn').classList.add('hidden');
                 }
             } 
-            else if (state.phase === 'VOTE') { document.getElementById('step-vote').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60'; document.getElementById('panel-vote').classList.remove('hidden'); } 
+            else if (state.phase === 'VOTE') { 
+                document.getElementById('step-vote').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60'; 
+                if (state.votesReceived && state.votesReceived.some(v => v.id === state.myPlayerId)) {
+                    document.getElementById('panel-vote').classList.add('hidden');
+                    document.getElementById('night-blindfold-mask').classList.remove('hidden');
+                    document.getElementById('blindfold-desc').innerText = '已送交決議，等待其他大師...';
+                } else {
+                    document.getElementById('panel-vote').classList.remove('hidden'); 
+                    document.getElementById('night-blindfold-mask').classList.add('hidden');
+                }
+            } 
             else if (state.phase === 'ROUND_SETTLEMENT') {
                 document.getElementById('step-vote').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60'; document.getElementById('panel-round-settlement').classList.remove('hidden'); document.getElementById('grid-parent').classList.add('hidden'); document.getElementById('players-parent').classList.add('hidden');
-                
-                const btnNext = document.getElementById('btn-next-round');
-                if (state.round === 3) {
-                    btnNext.innerText = "進入終局鑒人環節";
-                } else {
-                    btnNext.innerText = "進入下一回合 (獲得 2 票)";
-                }
-
                 if (state.revealedArtifactThisRound) { const a = state.revealedArtifactThisRound, activeArts = getActiveArtifactsForCurrentRound(), top2 = activeArts.filter(x => state.protectedArtifactsGlobal.includes(x.id)).slice(-2); document.getElementById('round-settlement-reveal').innerHTML = `<div class="bg-zinc-900 border border-emerald-900/50 p-3 rounded-lg mb-4 shadow-sm"><div class="text-emerald-400 font-bold text-sm mb-1">🏆 本輪獲得保護的古董：</div><div class="text-gray-300 text-sm">${top2.map(x => `[${x.name}] (${x.votes}票)`).join(', ')}</div></div><div class="bg-zinc-950 p-4 rounded-xl border ${a.isReal ? 'border-emerald-500/50':'border-red-500/50'} text-center shadow-[0_0_15px_rgba(${a.isReal?'16,185,129':'239,68,68'},0.15)]"><p class="text-gray-400 text-xs mb-1 font-bold tracking-wider">📢 天眼公開 (本輪得票第二高)</p><p class="text-lg font-extrabold font-serif-china ${a.isReal ? 'text-emerald-400':'text-red-400'}">[${a.name}] 為 ${a.isReal?'【真跡】':'【贗品】'}</p></div>`; }
                 document.getElementById('round-settlement-ledger').innerHTML = state.roundLedger.map(v => `<div class="p-3 rounded-lg bg-zinc-900/80 border border-zinc-800 flex flex-col gap-1 text-sm"><span class="font-bold text-gray-200">👤 ${v.name} <span class="text-xs text-zinc-500 ml-1 ${state.godMode ? 'inline':'hidden'}">(${v.role})</span></span><span class="text-amber-500/90 font-medium pl-4 border-l-2 border-zinc-700">➔ ${v.votes.join(', ')}</span></div>`).join('');
             } else if (state.phase === 'FINAL_VOTE') {
-                document.getElementById('step-end').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60'; document.getElementById('panel-final-vote').classList.remove('hidden'); document.getElementById('grid-parent').classList.add('hidden');
-                if (state.myRole === '老朝奉') document.getElementById('final-vote-title').innerText = '🔪 終局暗殺：尋找許願！'; else if (state.myRole === '藥不然') document.getElementById('final-vote-title').innerText = '🔪 終局盲狙：尋找方震！'; else document.getElementById('final-vote-title').innerText = '🔥 終局對決：捉拿老朝奉！';
+                document.getElementById('step-end').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60'; document.getElementById('grid-parent').classList.add('hidden');
+                if (state.finalVotesReceived && state.finalVotesReceived.some(v => v.id === state.myPlayerId)) {
+                    document.getElementById('panel-final-vote').classList.add('hidden');
+                    document.getElementById('night-blindfold-mask').classList.remove('hidden');
+                    document.getElementById('blindfold-desc').innerText = '已送交指控，等待其他大師...';
+                } else {
+                    document.getElementById('panel-final-vote').classList.remove('hidden'); 
+                    document.getElementById('night-blindfold-mask').classList.add('hidden');
+                    if (state.myRole === '老朝奉') document.getElementById('final-vote-title').innerText = '🔪 終局暗殺：尋找許願！'; else if (state.myRole === '藥不然') document.getElementById('final-vote-title').innerText = '🔪 終局盲狙：尋找方震！'; else document.getElementById('final-vote-title').innerText = '🔥 終局對決：捉拿老朝奉！';
+                }
             } else if (state.phase === 'END') {
                 document.getElementById('step-end').className = 'py-1.5 rounded-lg text-amber-400 bg-amber-950/40 font-bold border border-amber-800/60'; document.getElementById('panel-end').classList.remove('hidden'); document.getElementById('grid-parent').classList.add('hidden'); document.getElementById('players-parent').classList.add('hidden');
                 
