@@ -494,7 +494,7 @@
 
         /* Webhook n8n 呼叫引擎 (含 Basic Auth) */
         async function callGameEngine(action, payload) {
-            const url = localStorage.getItem('gudong_webhook_url');
+            const url = n8nWebhookUrl;
             const user = localStorage.getItem('gudong_webhook_user') || '';
             const pass = localStorage.getItem('gudong_webhook_pass') || '';
             
