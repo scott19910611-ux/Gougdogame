@@ -509,6 +509,12 @@
             try {
                 const response = await fetch(url, {
                     method: 'POST', headers: headers,
+					// 調整發送的 payload 內容
+					const payload = {
+						action: "AI_VOTE", // 確保這裡送出這個字串，n8n 才會走新路徑
+						currentRoundChat: getChatMessagesForRound(), // 只傳這回合
+						pastSummary: gameManager.getPastHistorySummary() // 傳送過去的總結
+					};					
                     body: JSON.stringify({ action: action, ...payload })
                 });
                 if (!response.ok) throw new Error('Engine error');
