@@ -467,7 +467,7 @@
             const savedWebhook = n8nWebhookUrl;
             const savedUser = localStorage.getItem('gudong_webhook_user');
             const savedPass = localStorage.getItem('gudong_webhook_pass');
-            if (savedWebhook) document.getElementById('gw-url').value = savedWebhook;
+            //if (savedWebhook) document.getElementById('gw-url').value = savedWebhook;
             if (savedUser) document.getElementById('gw-user').value = savedUser;
             if (savedPass) document.getElementById('gw-pass').value = savedPass;
             showView('view-gateway');
@@ -476,7 +476,7 @@
         window.enterSystem = function() {
             const url = n8nWebhookUrl;
             if(!url) return showToast('請輸入 Webhook URL！');
-            //localStorage.setItem('gudong_webhook_url', url);
+            localStorage.setItem('gudong_webhook_url', url);
             localStorage.setItem('gudong_webhook_user', document.getElementById('gw-user').value.trim());
             localStorage.setItem('gudong_webhook_pass', document.getElementById('gw-pass').value.trim());
             showView('view-login');
